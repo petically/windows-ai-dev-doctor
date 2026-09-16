@@ -93,6 +93,8 @@ def test_selection_and_consent(context: Context) -> None:
         ('password="two words"', "two words"),
         ("passwd='private text'", "private text"),
         ("Cookie: SID=private-cookie; next=ignored", "private-cookie"),
+        ("Cookie: SID=first; other=second-private-cookie", "second-private-cookie"),
+        ("Set-Cookie: account=private-account; Secure", "private-account"),
         ("https://name:private-pass@proxy.example:8080", "private-pass"),
         ("https://example.com/?custom=private-query", "private-query"),
         ("mail person@example.com", "person@example.com"),

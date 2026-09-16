@@ -23,7 +23,16 @@ class Redactor:
         # Remove ANSI/OSC sequences before matching split or decorated secrets.
         value = re.sub(r"\x1b\][^\x07]*(?:\x07|\x1b\\)", "", value)
         value = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", value)
-        value = "".join(c for c in value if c in "\n\t" or (ord(c) >= 32 and ord(c) != 127))
+        value = "".join(
+            c for c in value if c in "\n\t" or (ord(c) >= 32 and not 127 <= ord(c) <= 159)
+        )
+        # A Cookie header can contain multiple values; redact the whole header,
+        # not just the first semicolon-delimited credential.
+        value = re.sub(
+            r"(?im)(\b(?:authorization|proxy-authorization|cookie|set-cookie)\s*:\s*)[^\r\n]*",
+            lambda m: m[1] + MASK,
+            value,
+        )
         for secret in sorted(self.known_secrets, key=len, reverse=True):
             value = value.replace(secret, MASK)
         value = re.sub(r"(?i)\b(?:bearer|basic)\s+[^\s,;]+", MASK, value)
