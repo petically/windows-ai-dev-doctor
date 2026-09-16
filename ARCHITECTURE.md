@@ -101,3 +101,23 @@ they have actual callers; avoid speculative generic abstractions.
 - [gh auth status](https://cli.github.com/manual/gh_auth_status): do not infer authentication
   from installation/version or serialize authentication output.
 - [PyInstaller usage](https://pyinstaller.org/en/stable/usage.html): build Windows on Windows.
+
+## Implementation review (Phase 1)
+
+The first working implementation prompted four refinements: evidence key/value pairs are
+sanitized together (not just as strings); parser errors do not echo raw CLI arguments;
+fix definitions and immutable plans are separate from the backup implementation; and PATH
+inspection/executable discovery skip UNC, mapped network drives and reparse points to
+preserve offline behavior. Control-only output degrades safely instead of crashing renderers.
+
+The shared filesystem guard lives in core/safety.py. SafetyError is defined there too; core never imports fixes.
+Immutable plans live in the data-only fixes/models.py module. CLI repair lookup uses fixes/framework.py.
+A future repair requiring a different plan shape should add a typed plan variant, not reuse
+backup fields for unrelated operations.
+
+Packaging uses PyInstaller onedir, not onefile: users extract a complete standalone bundle,
+with no Python installation or temporary extraction on startup. CI uploads a development ZIP
+only, with read-only repository permissions and pinned action commits. No release is created.
+Local filesystem metadata calls still depend on OS responsiveness; arbitrary filesystem IO
+cannot be guaranteed to finish by the command/network worker deadlines. Plugins and installed
+executables remain trusted code, not sandboxed extensions.

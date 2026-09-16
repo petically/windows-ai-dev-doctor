@@ -13,7 +13,7 @@ Run `python -m pytest`, `python -m ruff check .`, `python -m ruff format --check
 and `python -m mypy src tests` before implementation commits. Windows packaging:
 `python -m pip install -e ".[build]"`, then
 `python -m PyInstaller --clean --noconfirm ai-dev-doctor.spec`.
-Smoke-test dist/ai-dev-doctor.exe with help/version/diagnose --json/report.
+Smoke-test dist/ai-dev-doctor/ai-dev-doctor.exe with help/version/diagnose --json/report.
 Diagnostic exit 1 is a valid unhealthy host outcome; 2 indicates invocation/runtime failure.
 
 ## Architecture and standards

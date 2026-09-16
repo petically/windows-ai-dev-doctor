@@ -1,0 +1,4 @@
+include *.md ai-dev-doctor.spec
+recursive-include tests *.py
+recursive-include packaging *.py
+recursive-include scripts *.py

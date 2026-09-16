@@ -1,20 +1,160 @@
-# windows-ai-dev-doctor
+# Windows AI Dev Doctor
 
-项目仓库已初始化，功能需求尚待确认，目前没有可运行的程序。
+Explain Windows developer-tool problems with evidence, conservative findings, and explicit safe actions.
 
-## 当前状态
+**Phase 1 foundation · 0.1.0.dev0 · no production release yet**
 
-- 默认分支：`main`。
-- 已配置基础忽略规则，防止提交常见凭据、依赖、缓存和构建产物。
-- 尚未实现诊断功能，也未配置测试、类型检查或 Windows 可执行文件打包。
-- 尚未达到 `v0.1.0` 发布条件。
+This project helps answer “why does my AI/developer tool not work on Windows?”
+The foundation is implemented; broader AI application and Windows diagnostics are next.
+It never claims that proxy presence, multiple installations, or an occupied port alone proves a fault.
 
-## 开发前需要确认
+## Available now
 
-请补充功能需求文档，明确诊断范围、交互方式、技术栈、支持的 Windows 版本与验收标准。
-已有文档只规定 Git 提交和 GitHub 发布流程，其中的提交消息示例不作为已确认的功能需求。
+| Check ID | Scope |
+| --- | --- |
+| windows-system | Windows version and architecture metadata |
+| git-version | Installed Git can execute a recognized version probe |
+| path-structure | Windows PATH duplicates, missing/relative/empty/quoted entries |
+| proxy-environment | Proxy URL structure; credential-free endpoint evidence |
+| network-dns | Explicitly enabled, bounded resolution of two public targets |
+| network-https | Explicitly enabled direct DNS/TCP/TLS/HTTP connectivity stages |
 
-## 提交与发布
+CLI, per-check failure isolation, strict TOML config, mandatory redaction, local JSON/HTML
+reports, and a confirmed configuration-backup framework are implemented. There are no runtime
+Python package dependencies. ChatGPT/Codex, WebView2, GPU, detailed tool and system checks
+are **not implemented yet**; see [ROADMAP.md](ROADMAP.md).
 
-遵循仓库中的《Codex GitHub 自动提交与发布指令》：在逻辑里程碑执行相关检查、审查差异并提交；首次推送前检查敏感信息。
-只有完成测试、静态检查、Windows 打包和可执行文件验证后，才可发布版本。
+Example output (illustrative, not a measurement of your machine):
+
+```text
+Windows AI Dev Doctor 0.1.0.dev0
+
+System
+  [INFO] Windows system: Windows platform detected
+Developer Tools
+  [PASS] Git version: Git 2.49.0.windows.1 is executable
+Environment
+  [WARNING] PATH structure: 2 PATH findings
+Network
+  [INFO] Proxy environment: Proxy environment detected
+  [SKIPPED] DNS connectivity: Network probe requires --network consent
+  [SKIPPED] HTTPS connectivity: Network probe requires --network consent
+```
+
+## Installation
+
+For development, use Python 3.12+ on Windows 10/11:
+
+```powershell
+git clone https://github.com/petically/windows-ai-dev-doctor.git
+cd windows-ai-dev-doctor
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\ai-dev-doctor.exe help
+```
+
+The Windows CI build produces a **development ZIP artifact** containing the executable and
+its bundled runtime. Extract the entire folder and run `ai-dev-doctor.exe`; Python is not
+required. Keep the `_internal` folder beside the executable. No installer or signed release
+is available yet. [CI artifacts](https://github.com/petically/windows-ai-dev-doctor/actions)
+may require a GitHub login to download.
+
+An onedir package is deliberate: fast startup and no onefile runtime extraction writes.
+Do not copy only the executable out of its bundle.
+
+## Usage
+
+After activating your environment (or from the extracted executable directory):
+
+```powershell
+ai-dev-doctor diagnose
+ai-dev-doctor doctor
+ai-dev-doctor diagnose --verbose
+ai-dev-doctor diagnose --json
+ai-dev-doctor diagnose --category network
+ai-dev-doctor diagnose --network
+ai-dev-doctor explain git-version
+ai-dev-doctor report --output doctor-report.json
+ai-dev-doctor report --output doctor-report.html
+ai-dev-doctor diagnose --log-file local-events.jsonl
+ai-dev-doctor fix --dry-run backup-config
+ai-dev-doctor fix backup-config
+ai-dev-doctor version
+```
+
+Network probes require `--network` on each invocation, including reports. They query
+`example.com` and `www.python.org` directly, without proxy credentials or redirects.
+A direct probe does not validate the configured proxy route. Unknown arguments/config options
+are errors. Exit codes: **0** no FAIL/ERROR, **1** diagnostic FAIL/ERROR, **2** invocation,
+configuration, export or fix failure; cancellation returns **130**.
+
+Terminal output has ASCII status labels, optional TTY colors, and respects `NO_COLOR`.
+JSON stdout is a single document; errors go to stderr.
+
+## Configuration
+
+Optional default: `%USERPROFILE%\.ai-dev-doctor\config.toml`. Nothing is created automatically.
+A custom config can be passed with `diagnose --config path.toml` (also supported by report).
+Example:
+
+```toml
+network_timeout = 4.0
+command_timeout = 4.0
+enabled_categories = ["system", "developer-tools", "environment", "network"]
+disabled_checks = []
+verbose = false
+```
+
+Timeouts must be 0.1–30 seconds, per command or per network target. Config is capped at 64 KiB.
+Network consent and redaction cannot be disabled/enabled through config. Unknown check IDs
+and options are rejected rather than silently ignored.
+
+## Safety and privacy
+
+- Diagnostics inspect state without editing configuration or writing logs by default.
+- No telemetry, analytics or uploads. Reports and logs stay local.
+- Outbound probes require explicit consent; normal DNS/IP metadata is visible on the network.
+- Secrets are removed at output boundaries. Collection is minimized; no auth/config dumps.
+- Remote/reparse PATH locations are not traversed, preventing accidental share access.
+- Commands use a reviewed allowlist, explicit executable paths, bounded output/deadlines,
+  no shell or stdin, and a minimal environment. Installed executables must still be trusted.
+- Report/log files require explicit paths and never overwrite existing files.
+- The only fix backs up **this tool's own existing valid configuration**. It previews the
+  source, backup and audit file, defaults to NO, requires interactive `yes`, rechecks input,
+  rejects reparse/symlink paths and records intent/outcome. Dry-run creates nothing.
+- The original configuration is retained. To restore after later manual edits, inspect the
+  backup and copy its contents back manually; the tool does not silently overwrite it.
+
+Redaction is defense in depth, not proof that arbitrary text contains no secrets. Review
+exports before sharing. See [SECURITY.md](SECURITY.md) and [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## Reports
+
+JSON schema version `1` includes UTC timestamp, app version, system metadata, status counts
+and structured results. HTML is self-contained, escaped, responsive and usable offline.
+No scripts, external assets or automatic browser launch. Existing destinations are refused.
+
+## Development and validation
+
+```powershell
+python -m pip install -e ".[dev,build]"
+python -m pytest
+python -m ruff check .
+python -m ruff format --check .
+python -m mypy src tests
+python -m build
+python -m PyInstaller --clean --noconfirm ai-dev-doctor.spec
+python scripts/smoke_package.py dist/ai-dev-doctor/ai-dev-doctor.exe
+```
+
+Use the virtual environment's Python. Tests use fake system/network state and controlled
+child processes. Windows and Linux CI test Python 3.12/3.13; Windows also builds and
+smoke-tests the standalone bundle. Local filesystem probes rely on OS responsiveness;
+this is not a sandbox for malicious plugins, executables or concurrent local attackers.
+
+## Contributing and license
+
+Start with [CONTRIBUTING.md](CONTRIBUTING.md), [AGENTS.md](AGENTS.md), the
+[specification](SPEC.md), and the [architecture](ARCHITECTURE.md).
+Community expectations are in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+MIT licensed; see [LICENSE](LICENSE).

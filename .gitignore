@@ -35,3 +35,9 @@ htmlcov/
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# Local reports and repair output
+*.jsonl
+*.bak
+doctor-report.*
+artifacts/
