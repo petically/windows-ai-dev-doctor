@@ -2,10 +2,17 @@ import os
 import sys
 import time
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
-from ai_dev_doctor.core.commands import Command, CommandRunner, _capture, resolve_executable
+from ai_dev_doctor.core.commands import (
+    Command,
+    CommandResult,
+    CommandRunner,
+    _capture,
+    resolve_executable,
+)
 
 
 def test_command_timeout() -> None:
@@ -45,3 +52,55 @@ def test_execution_with_spaces(tmp_path: Path) -> None:
     script = tmp_path / "script with 空格.py"
     script.write_text("print('valid')", encoding="utf-8")
     assert _capture((sys.executable, "-I", str(script)), os.environ, 4).stdout.strip() == "valid"
+
+
+def test_reviewed_github_auth_command_does_not_expose_tokens() -> None:
+    env = {
+        "PATH": "fixture",
+        "GITHUB_TOKEN": "secret-canary",
+        "GH_ENTERPRISE_TOKEN": "secret-canary",
+        "HTTPS_PROXY": "http://private-proxy",
+        "APPDATA": "fixture-appdata",
+    }
+    with (
+        patch("ai_dev_doctor.core.commands.resolve_executable", return_value="gh.exe"),
+        patch(
+            "ai_dev_doctor.core.commands._capture",
+            return_value=CommandResult("completed", 0),
+        ) as capture,
+    ):
+        CommandRunner(env).run(Command.GH_AUTH_STATUS, 1)
+    argv, child_env = capture.call_args.args[:2]
+    assert argv == (
+        "gh.exe",
+        "auth",
+        "status",
+        "--active",
+        "--hostname",
+        "github.com",
+    )
+    assert "--show-token" not in argv
+    assert "GITHUB_TOKEN" not in child_env
+    assert "GH_ENTERPRISE_TOKEN" not in child_env
+    assert "HTTPS_PROXY" not in child_env
+    assert child_env["GH_PROMPT_DISABLED"] == "1"
+    assert child_env["GH_TELEMETRY"] == "0"
+
+
+def test_npm_uses_adjacent_cli_script_not_batch_launcher(tmp_path: Path) -> None:
+    node = tmp_path / "node.exe"
+    script = tmp_path / "node_modules" / "npm" / "bin" / "npm-cli.js"
+    script.parent.mkdir(parents=True)
+    node.write_bytes(b"fixture")
+    script.write_bytes(b"fixture")
+    runner = CommandRunner({"PATH": str(tmp_path)})
+    with (
+        patch("ai_dev_doctor.core.commands.resolve_executable", return_value=str(node)),
+        patch(
+            "ai_dev_doctor.core.commands._capture",
+            return_value=CommandResult("completed", 0, "10.0.0"),
+        ) as capture,
+    ):
+        result = runner.run(Command.NPM_VERSION, 1)
+    assert result.returncode == 0
+    assert capture.call_args.args[0] == (str(node), str(script), "--version")

@@ -7,6 +7,7 @@ from ai_dev_doctor.core.commands import Runner
 from ai_dev_doctor.core.config import Config, ConfigError
 from ai_dev_doctor.core.host import Host
 from ai_dev_doctor.core.network import Network
+from ai_dev_doctor.core.windows import NullWindowsInspector, WindowsInspector
 from ai_dev_doctor.models import CheckResult, Severity, Status
 
 
@@ -17,6 +18,7 @@ class Context:
     network: Network
     config: Config
     network_allowed: bool = False
+    windows: WindowsInspector = NullWindowsInspector()
 
 
 @dataclass(frozen=True)

@@ -65,3 +65,62 @@ def parse_proxy(value: str) -> ProxyEndpoint | None:
         return ProxyEndpoint(parsed.scheme, parsed.hostname, port)
     except ValueError:
         return None
+
+
+def parse_version_token(output: str) -> str | None:
+    """Extract one conventional dotted version without returning surrounding output."""
+    match = re.search(r"(?<![A-Za-z0-9])v?(\d+\.\d+(?:\.\d+){0,2})(?![A-Za-z0-9])", output)
+    return match[1] if match else None
+
+
+@dataclass(frozen=True)
+class RepositoryState:
+    tracked_changes: int
+    untracked: int
+    conflicts: int
+    branch_known: bool
+
+
+def parse_git_status(output: str) -> RepositoryState | None:
+    tracked = 0
+    untracked = 0
+    conflicts = 0
+    branch_known = False
+    for raw in output.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("# branch."):
+            branch_known = True
+        elif line.startswith(("1 ", "2 ")):
+            tracked += 1
+        elif line.startswith("u "):
+            tracked += 1
+            conflicts += 1
+        elif line.startswith("? "):
+            untracked += 1
+        elif not line.startswith("#"):
+            return None
+    return RepositoryState(tracked, untracked, conflicts, branch_known)
+
+
+def parse_windows_proxy(value: str) -> tuple[ProxyEndpoint, ...] | None:
+    """Parse WinINET/WinHTTP single or per-scheme proxy server lists."""
+    endpoints: list[ProxyEndpoint] = []
+    for raw in value.split(";"):
+        item = raw.strip()
+        if not item:
+            continue
+        scheme = ""
+        target = item
+        if "=" in item:
+            scheme, target = item.split("=", 1)
+            scheme = scheme.casefold()
+            if scheme not in ("http", "https", "socks", "socks5"):
+                return None
+        prefix = "socks5://" if scheme in ("socks", "socks5") else f"{scheme}://" if scheme else ""
+        endpoint = parse_proxy(prefix + target)
+        if endpoint is None:
+            return None
+        endpoints.append(endpoint)
+    return tuple(endpoints) if endpoints else None

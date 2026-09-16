@@ -10,7 +10,7 @@ from multiprocessing.connection import Connection
 from typing import Literal, Protocol
 
 TARGETS = ("example.com", "www.python.org")
-ProbeKind = Literal["dns", "https"]
+ProbeKind = Literal["dns", "tcp", "https"]
 
 
 @dataclass(frozen=True)
@@ -55,6 +55,14 @@ def _perform(kind: ProbeKind, target: str, timeout: float) -> ProbeResult:
             return ProbeResult(
                 target, stage, False, "No resolved address accepted a TCP connection"
             )
+        if kind == "tcp":
+            return ProbeResult(
+                target,
+                stage,
+                True,
+                "TCP connection established",
+                int((time.monotonic() - start) * 1000),
+            )
         stage = "tls"
         sock.settimeout(max(0.1, timeout - (time.monotonic() - start)))
         sock = ssl.create_default_context().wrap_socket(sock, server_hostname=target)
@@ -95,7 +103,7 @@ def _worker(pipe: Connection, kind: ProbeKind, target: str, timeout: float) -> N
 
 class NetworkProbe:
     def probe(self, kind: ProbeKind, target: str, timeout: float) -> ProbeResult:
-        if kind not in ("dns", "https") or target not in TARGETS or not 0.1 <= timeout <= 30:
+        if kind not in ("dns", "tcp", "https") or target not in TARGETS or not 0.1 <= timeout <= 30:
             raise ValueError("Unreviewed network probe")
         context = multiprocessing.get_context("spawn")
         parent, child = context.Pipe(duplex=False)

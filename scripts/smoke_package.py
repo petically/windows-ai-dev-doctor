@@ -32,7 +32,7 @@ def main() -> None:
             if "--json" in arguments:
                 report = json.loads(result.stdout)
                 assert report["schema_version"] == 1
-                assert len(report["results"]) == 6
+                assert len(report["results"]) == 36
                 assert all(
                     r["status"] == "SKIPPED"
                     for r in report["results"]

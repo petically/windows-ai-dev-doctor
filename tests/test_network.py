@@ -75,3 +75,18 @@ def test_https_stages(stage: str) -> None:
         tls.wrap_socket.assert_called_once_with(sock, server_hostname="example.com")
         assert b"HEAD / HTTP/1.1" in sock.sendall.call_args.args[0]
     sock.close.assert_called()
+
+
+def test_tcp_probe_stops_before_tls() -> None:
+    addresses = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.0.2.1", 443))]
+    sock = MagicMock()
+    with (
+        patch("socket.getaddrinfo", return_value=addresses),
+        patch("socket.socket", return_value=sock),
+        patch("ssl.create_default_context") as tls,
+    ):
+        result = _perform("tcp", "example.com", 1)
+    assert result.ok and result.stage == "tcp"
+    assert result.detail == "TCP connection established"
+    tls.assert_not_called()
+    sock.close.assert_called()

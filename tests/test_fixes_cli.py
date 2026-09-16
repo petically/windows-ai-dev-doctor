@@ -95,13 +95,13 @@ def test_cli_json_export_and_log(
 ) -> None:
     monkeypatch.setattr("ai_dev_doctor.cli.config_path", lambda: tmp_path / "absent.toml")
     assert main(["diagnose", "--json"], context=context) == 0
-    assert len(json.loads(capsys.readouterr().out)["results"]) == 6
+    assert len(json.loads(capsys.readouterr().out)["results"]) == 36
     output = tmp_path / "report.html"
     log = tmp_path / "events.jsonl"
     args = ["report", "--output", str(output), "--log-file", str(log)]
     assert main(args, context=context) == 0
     assert "<!doctype html>" in output.read_text(encoding="utf-8")
-    assert len(log.read_text().splitlines()) == 6
+    assert len(log.read_text().splitlines()) == 36
     original = output.read_bytes()
     assert main(args, context=context) == 2
     assert output.read_bytes() == original

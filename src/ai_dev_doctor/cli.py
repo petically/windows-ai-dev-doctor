@@ -17,6 +17,7 @@ from ai_dev_doctor.core.host import LocalHost
 from ai_dev_doctor.core.logging import write_event
 from ai_dev_doctor.core.network import NetworkProbe
 from ai_dev_doctor.core.redaction import Redactor
+from ai_dev_doctor.core.windows import LocalWindowsInspector
 from ai_dev_doctor.diagnostics.builtin import registry
 from ai_dev_doctor.fixes.backup import SafetyError
 from ai_dev_doctor.fixes.framework import DEFINITIONS, get_fix
@@ -114,8 +115,14 @@ def main(argv: Sequence[str] | None = None, *, context: Context | None = None) -
             return _fix(args.fix_id, args.dry_run, redactor)
         cfg = load_config(args.config or config_path(), required=args.config is not None)
         if context is None:
+            environment = dict(os.environ)
             context = Context(
-                LocalHost(), CommandRunner(dict(os.environ)), NetworkProbe(), cfg, args.network
+                LocalHost(),
+                CommandRunner(environment),
+                NetworkProbe(),
+                cfg,
+                args.network,
+                LocalWindowsInspector(environment),
             )
         else:
             context = replace(context, config=cfg, network_allowed=args.network)

@@ -5,7 +5,7 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
-CATEGORIES = ("system", "developer-tools", "environment", "network")
+CATEGORIES = ("system", "developer-tools", "ai-applications", "environment", "network")
 
 
 class ConfigError(ValueError):

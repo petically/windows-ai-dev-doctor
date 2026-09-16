@@ -80,7 +80,7 @@ def test_network_opt_in_and_multiple_targets(context: Context) -> None:
     registry().run(context)
     assert not network.calls
     results = registry().run(replace(context, network_allowed=True), "network")
-    assert len(network.calls) == 4
+    assert len(network.calls) == 6
     assert results[-1].status == Status.PASS
     network.ok = False
     assert registry().run(replace(context, network_allowed=True))[-1].status == Status.FAIL

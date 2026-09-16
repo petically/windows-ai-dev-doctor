@@ -76,7 +76,8 @@ def test_registry_isolates_exception_and_identity(context: Context) -> None:
 def test_selection_and_consent(context: Context) -> None:
     checks = registry()
     network = checks.run(context, "network")
-    assert [r.status for r in network] == [Status.INFO, Status.SKIPPED, Status.SKIPPED]
+    assert len(network) == 9
+    assert [r.status for r in network[-3:]] == [Status.SKIPPED] * 3
     assert checks.run(replace(context, config=replace(context.config, enabled_categories=()))) == ()
     cfg = replace(context.config, disabled_checks=("git-version",))
     assert checks.run(replace(context, config=cfg), "developer-tools")[0].status == Status.SKIPPED
