@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+import sys
 import threading
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -55,6 +56,9 @@ def _capture(
         raise ValueError("Invalid execution bounds")
     if Path(argv[0]).suffix.lower() in (".bat", ".cmd"):
         return CommandResult("blocked")
+    creationflags = 0
+    if sys.platform == "win32":
+        creationflags = subprocess.CREATE_NO_WINDOW
     try:
         proc = subprocess.Popen(
             argv,
@@ -63,7 +67,7 @@ def _capture(
             stderr=subprocess.PIPE,
             shell=False,
             env=dict(env),
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+            creationflags=creationflags,
         )
     except FileNotFoundError:
         return CommandResult("missing")

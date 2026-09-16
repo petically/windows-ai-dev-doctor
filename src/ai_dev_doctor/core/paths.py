@@ -1,13 +1,13 @@
 """Avoid implicitly contacting remote shares while inspecting local PATH."""
 
-import os
+import sys
 from pathlib import Path
 
 
 def is_local_path(path: Path) -> bool:
     if not path.is_absolute():
         return False
-    if os.name != "nt":
+    if sys.platform != "win32":
         return True
     import ctypes
 
