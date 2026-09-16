@@ -36,10 +36,15 @@ class CheckResult:
     documentation_url: str | None = None
 
     def __post_init__(self) -> None:
-        if not re.fullmatch(r"[a-z][a-z0-9-]*", self.id):
+        if not isinstance(self.id, str) or not re.fullmatch(r"[a-z][a-z0-9-]*", self.id):
             raise ValueError("Invalid check ID")
-        if not self.name or not self.category or not self.summary:
-            raise ValueError("Result text fields cannot be empty")
+        if any(
+            not isinstance(value, str) or not value.strip()
+            for value in (self.name, self.category, self.summary)
+        ):
+            raise ValueError("Result text fields must be nonempty strings")
+        if self.documentation_url is not None and not isinstance(self.documentation_url, str):
+            raise ValueError("Documentation URL must be a string or None")
         if not isinstance(self.status, Status) or not isinstance(self.severity, Severity):
             raise ValueError("Status and severity must be enum values")
         for items in (self.details, self.recommendations, self.fix_ids):

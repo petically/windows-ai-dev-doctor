@@ -2,6 +2,7 @@ import io
 import json
 from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -148,3 +149,13 @@ def test_report_contract_and_html_escaping(context: Context) -> None:
     assert "&lt;script&gt;" in output
     assert "default-src 'none'" in output
     assert "\x1b" not in render_terminal(results, Redactor())
+
+
+def test_malformed_plugin_result_is_isolated(context: Context) -> None:
+    def malformed(ctx: Context) -> CheckResult:
+        return CheckResult("malformed", "Malformed", "system", Status.INFO, cast(str, 42))
+
+    check = Check("malformed", "Malformed", "system", "fixture", malformed)
+    results = Registry((check, registry().get("windows-system"))).run(context)
+    assert [r.status for r in results] == [Status.ERROR, Status.INFO]
+    assert json.loads(render_json(results, Redactor()))["results"][0]["status"] == "ERROR"
