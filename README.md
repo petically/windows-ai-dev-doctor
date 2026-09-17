@@ -1,3 +1,5 @@
+English | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md)
+
 # Windows AI Dev Doctor
 
 Explain Windows developer-tool problems with evidence, conservative findings, and explicit safe actions.
