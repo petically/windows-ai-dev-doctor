@@ -2,15 +2,15 @@
 
 import os
 import subprocess
-import sys
 import threading
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import BinaryIO, Protocol
+from typing import IO, Protocol
 
 from ai_dev_doctor.core.paths import is_local_path
+from ai_dev_doctor.core.process import start_process
 
 
 class Tool(StrEnum):
@@ -114,19 +114,8 @@ def _capture(
         raise ValueError("Invalid execution bounds")
     if Path(argv[0]).suffix.lower() in (".bat", ".cmd"):
         return CommandResult("blocked")
-    creationflags = 0
-    if sys.platform == "win32":
-        creationflags = subprocess.CREATE_NO_WINDOW
     try:
-        proc = subprocess.Popen(
-            argv,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            shell=False,
-            env=dict(env),
-            creationflags=creationflags,
-        )
+        proc = start_process(argv, env)
     except FileNotFoundError:
         return CommandResult("missing")
     except OSError:
@@ -134,7 +123,7 @@ def _capture(
     output = bytearray()
     overflow = threading.Event()
 
-    def drain(stream: BinaryIO, keep: bool) -> None:
+    def drain(stream: IO[bytes], keep: bool) -> None:
         try:
             while chunk := stream.read(4096):
                 if keep:
@@ -152,17 +141,19 @@ def _capture(
         threading.Thread(target=drain, args=(proc.stdout, True), daemon=True),
         threading.Thread(target=drain, args=(proc.stderr, False), daemon=True),
     ]
-    for reader in readers:
-        reader.start()
     outcome = "completed"
     try:
+        for reader in readers:
+            reader.start()
         proc.wait(timeout=timeout)
     except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.wait(timeout=2)
         outcome = "timeout"
-    for reader in readers:
-        reader.join(timeout=0.2)
+    finally:
+        # Clean owned descendants after success, timeout and cancellation.
+        proc.close()
+        for reader in readers:
+            if reader.ident is not None:
+                reader.join(timeout=1)
     if any(reader.is_alive() for reader in readers):
         outcome = "incomplete"
     return CommandResult(
@@ -187,13 +178,24 @@ _SPECS = {
         Tool.GIT, ("config", "--global", "--name-only", "--get-regexp", r"^user\.(name|email)$")
     ),
     Command.GIT_DEFAULT_BRANCH: _CommandSpec(
-        Tool.GIT, ("config", "--global", "--get", "init.defaultBranch")
+        Tool.GIT, ("config", "--global", "--name-only", "--get", "init.defaultBranch")
     ),
     Command.GIT_CREDENTIAL_HELPER_KEYS: _CommandSpec(
         Tool.GIT,
         ("config", "--global", "--name-only", "--get-regexp", r"^credential\..*helper$"),
     ),
-    Command.GIT_REPOSITORY: _CommandSpec(Tool.GIT, ("status", "--porcelain=v2", "--branch")),
+    Command.GIT_REPOSITORY: _CommandSpec(
+        Tool.GIT,
+        (
+            "--no-optional-locks",
+            "-c",
+            "core.fsmonitor=false",
+            "status",
+            "--porcelain=v2",
+            "--branch",
+            "--ignore-submodules=all",
+        ),
+    ),
     Command.GH_VERSION: _CommandSpec(Tool.GH, ("--version",)),
     Command.GH_AUTH_STATUS: _CommandSpec(
         Tool.GH, ("auth", "status", "--active", "--hostname", "github.com")
@@ -231,6 +233,7 @@ class CommandRunner:
             "APPDATA",
             "LOCALAPPDATA",
             "PROGRAMDATA",
+            "HOME",
         }
         safe = {key: value for key, value in self.env.items() if key.upper() in allowed}
         safe.update(
@@ -243,6 +246,7 @@ class CommandRunner:
                 "DO_NOT_TRACK": "1",
                 "NO_COLOR": "1",
                 "LC_ALL": "C",
+                "PYTHONDONTWRITEBYTECODE": "1",
             }
         )
         return safe

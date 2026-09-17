@@ -1,4 +1,6 @@
-include *.md ai-dev-doctor.spec
+exclude *.md
+include README.md LICENSE SPEC.md ARCHITECTURE.md ROADMAP.md SECURITY.md CHANGELOG.md
+include CONTRIBUTING.md CODE_OF_CONDUCT.md AGENTS.md RELEASE_READINESS.md ai-dev-doctor.spec
 recursive-include tests *.py
 recursive-include packaging *.py
 recursive-include scripts *.py

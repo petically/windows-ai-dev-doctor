@@ -91,7 +91,7 @@ def _fix(fix_id: str, dry_run: bool, redactor: Redactor) -> int:
 def main(argv: Sequence[str] | None = None, *, context: Context | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):
         if isinstance(stream, io.TextIOWrapper):
-            stream.reconfigure(errors="backslashreplace")
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
     app = parser()
     # argparse never echoes arbitrary secret-bearing argument values to stderr.
     try:

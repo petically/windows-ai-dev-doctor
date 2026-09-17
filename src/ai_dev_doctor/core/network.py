@@ -35,7 +35,11 @@ def _perform(kind: ProbeKind, target: str, timeout: float) -> ProbeResult:
         if kind == "dns":
             ips = sorted({str(item[4][0]) for item in addresses})[:8]
             return ProbeResult(
-                target, stage, True, ", ".join(ips), int((time.monotonic() - start) * 1000)
+                target,
+                stage,
+                bool(ips),
+                ", ".join(ips) if ips else "No addresses returned",
+                int((time.monotonic() - start) * 1000),
             )
         stage = "tcp"
         # Try all resolved addresses within the remaining overall budget.

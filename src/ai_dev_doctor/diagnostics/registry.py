@@ -147,7 +147,7 @@ def registry() -> Registry:
                 "git-config",
                 "Git global configuration",
                 "developer-tools",
-                "Checks key presence without returning identities or helper values.",
+                "Checks global key presence only; local identity and values are not validated.",
                 git_config_check,
             ),
             _check(
@@ -183,7 +183,7 @@ def registry() -> Registry:
                 "python-launcher",
                 "Python launcher",
                 "developer-tools",
-                "Runs the Windows py launcher version probe.",
+                "Runs the optional Windows py launcher version probe.",
                 py_launcher_check,
             ),
             _check(
@@ -239,7 +239,7 @@ def registry() -> Registry:
                 "codex-environment",
                 "Codex environment",
                 "ai-applications",
-                "Checks configuration metadata without reading file contents.",
+                "Checks optional configuration metadata without reading contents; a missing config is not a fault.",
                 codex_environment_check,
             ),
             _check(
@@ -288,7 +288,7 @@ def registry() -> Registry:
                 "network-adapters",
                 "Network adapters and route",
                 "network",
-                "Uses IP Helper APIs for adapters and best-route selection.",
+                "Uses IP Helper APIs for active adapters and an IPv4 reference route; IPv6 routing is not tested.",
                 adapter_check,
             ),
             _check(
@@ -302,7 +302,7 @@ def registry() -> Registry:
                 "proxy-layers",
                 "Proxy and tunnel layers",
                 "network",
-                "Correlates proxies, listeners and possible tunnel adapters conservatively.",
+                "Correlates enabled proxies and explicit IPv4 loopback listeners; IPv6/localhost names remain unverified.",
                 proxy_layers_check,
             ),
             _check(

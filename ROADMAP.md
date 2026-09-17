@@ -22,13 +22,23 @@ Windows development artifact build. No production release or v0.1.0 tag.
    intentionally manual because reliable ownership, running-process and rollback guarantees
    are not yet proven.
 
-## Release readiness (requires review/authorization)
+## Phase 3 - release readiness
 
-- Audit the original full-product acceptance criteria and the diagnostic false-positive model.
-- Complete a dedicated security review of Win32 structures, process attribution, redaction
-  corpus and command process-tree containment.
-- Validate the standalone unsigned bundle on clean supported Windows 10 and Windows 11 systems,
-  including Store-installed application layouts and restricted enterprise environments.
-- Decide whether to add signed packaging/installer support and app-specific repair primitives.
-- Confirm documentation and install instructions, then obtain explicit authorization before
-  creating v0.1.0, a tag or a GitHub Release.
+- Independent review of all adapters, diagnostics, reporting and the backup framework.
+- Atomic Windows Job containment, robust TCP table bounds, conservative discovery and
+  proxy correlation, expanded privacy regression coverage and UTF-8 redirected output.
+- Windows Server 2022/2025 CI, fixed Linux type-check guards and strengthened relocated
+  portable-bundle smoke tests. Validation results are tracked in RELEASE_READINESS.md.
+- Release choice: unsigned portable x64 ZIP, versioned PE metadata and SHA-256 checksum.
+  Installer and signing are deferred; commercial signing is not required for v0.1.0.
+- Publish v0.1.0 only after local gates pass and the exact release commit has green CI.
+  Conditional publication has been explicitly authorized.
+
+## Next validation and development
+
+- Clean Windows 10 and clean Windows 11 client validation under standard-user accounts.
+- Enterprise access controls, Store layouts, ARM64 and IPv6 listener/route evidence.
+- Signed distribution once certificate ownership and maintenance are available.
+- Installer only if it adds sufficient value beyond the portable bundle.
+- Application cache repair remains manual until ownership, running-process protection,
+  backup and rollback can be demonstrated; no destructive cache repair by default.

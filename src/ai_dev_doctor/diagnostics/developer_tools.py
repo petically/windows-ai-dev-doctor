@@ -36,11 +36,11 @@ def _version_result(
         status, summary = Status.PASS, f"{name} {version} is executable"
         evidence.append(("version", version))
     elif result.outcome == "missing":
-        status = Status.WARNING
+        status = Status.INFO
         summary = f"{name} not found on inspected local PATH entries"
     elif result.outcome == "blocked":
-        status = Status.WARNING
-        summary = f"{name} was found only through an unsafe batch launcher"
+        status = Status.INFO
+        summary = f"{name} uses a batch launcher that this probe does not execute"
     else:
         status = Status.WARNING
         summary = f"{name} version probe could not complete reliably"
@@ -49,7 +49,7 @@ def _version_result(
         details.append(
             f"{len(locations)} PATH matches were found; multiple installations are not automatically a fault."
         )
-    if optional and status == Status.WARNING:
+    if optional and status != Status.PASS:
         details.append("This tool is optional unless your workflow depends on it.")
     return CheckResult(
         check_id,
@@ -61,7 +61,7 @@ def _version_result(
         evidence=tuple(evidence),
         details=tuple(details),
         recommendations=()
-        if status == Status.PASS
+        if status != Status.WARNING
         else (f"Review the {name} installation and PATH ordering.",),
         documentation_url=documentation_url,
     )
@@ -76,7 +76,7 @@ def git_check(ctx: Context) -> CheckResult:
     if locations:
         evidence.append(("path-matches", str(len(locations))))
     if result.outcome == "missing":
-        status, summary = Status.WARNING, "Git executable not found on inspected local PATH entries"
+        status, summary = Status.INFO, "Git executable not found on inspected local PATH entries"
     elif result.outcome != "completed" or result.returncode != 0 or result.truncated:
         status, summary = Status.WARNING, "Git version probe could not complete reliably"
     elif version := parse_git_version(result.stdout):
@@ -96,7 +96,7 @@ def git_check(ctx: Context) -> CheckResult:
         if len(locations) > 1
         else (),
         recommendations=()
-        if status == Status.PASS
+        if status != Status.WARNING
         else ("Review the Git installation and PATH; use an official Git for Windows installer.",),
         documentation_url="https://git-scm.com/downloads/win",
     )
@@ -123,20 +123,32 @@ def git_config_check(ctx: Context) -> CheckResult:
         if not present
     ]
     reliable = all(
-        result.outcome == "completed" and not result.truncated
+        result.outcome == "completed" and result.returncode in (0, 1) and not result.truncated
         for result in (identity, branch, helper)
     )
     if not reliable:
         status, summary = Status.WARNING, "Git global configuration could not be inspected reliably"
     elif missing:
-        status, summary = Status.WARNING, "Git author identity is incomplete"
+        status, summary = (
+            Status.INFO,
+            "Global Git identity keys are not both present; local identity may be configured",
+        )
     else:
-        status, summary = Status.PASS, "Git author identity keys are configured"
+        status, summary = (
+            Status.INFO,
+            "Global Git identity keys are present; values are not validated",
+        )
     evidence = (
-        ("user.name", "configured" if has_name else "not configured"),
-        ("user.email", "configured" if has_email else "not configured"),
-        ("default-branch", "configured" if branch.returncode == 0 else "not configured"),
-        ("git-helper", "configured" if helper.returncode == 0 else "not configured"),
+        ("user.name", "configured" if has_name else "not configured" if reliable else "unknown"),
+        ("user.email", "configured" if has_email else "not configured" if reliable else "unknown"),
+        (
+            "default-branch",
+            "configured" if branch.returncode == 0 else "not configured" if reliable else "unknown",
+        ),
+        (
+            "git-helper",
+            "configured" if helper.returncode == 0 else "not configured" if reliable else "unknown",
+        ),
     )
     return CheckResult(
         "git-config",
@@ -145,10 +157,12 @@ def git_config_check(ctx: Context) -> CheckResult:
         status,
         summary,
         evidence=evidence,
-        severity=Severity.MEDIUM if missing else Severity.LOW if not reliable else Severity.INFO,
+        severity=Severity.LOW if not reliable else Severity.INFO,
         details=("Identity values and credential-helper contents are deliberately not collected.",),
-        recommendations=("Configure the missing Git identity keys before committing.",)
-        if missing
+        recommendations=(
+            "If committing fails, review effective local and global Git identity configuration.",
+        )
+        if missing and reliable
         else (),
     )
 
@@ -235,9 +249,12 @@ def github_auth_check(ctx: Context) -> CheckResult:
         )
     result = ctx.runner.run(Command.GH_AUTH_STATUS, ctx.config.command_timeout)
     if result.outcome == "completed" and result.returncode == 0 and not result.truncated:
-        status, summary = Status.PASS, "GitHub CLI active account authenticated successfully"
+        status, summary = Status.PASS, "GitHub CLI stored active account authenticated successfully"
     elif result.outcome == "completed":
-        status, summary = Status.WARNING, "GitHub CLI authentication requires attention"
+        status, summary = (
+            Status.WARNING,
+            "GitHub CLI stored-account probe did not succeed; connectivity or authentication may be responsible",
+        )
     else:
         status, summary = Status.WARNING, "GitHub CLI authentication check could not complete"
     return CheckResult(
@@ -249,7 +266,9 @@ def github_auth_check(ctx: Context) -> CheckResult:
         severity=Severity.MEDIUM if status == Status.WARNING else Severity.INFO,
         evidence=(("outcome", result.outcome),),
         details=("Account names, scopes, tokens and command output are not retained.",),
-        recommendations=("Run gh auth login or gh auth status yourself to repair authentication.",)
+        recommendations=(
+            "Check connectivity and run gh auth status yourself; environment-token authentication was not tested.",
+        )
         if status == Status.WARNING
         else (),
         documentation_url="https://cli.github.com/manual/gh_auth_status",

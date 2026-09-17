@@ -26,4 +26,7 @@ class LocalHost:
 
     def directory_exists(self, path: str) -> bool | None:
         candidate = Path(path)
-        return candidate.is_dir() if is_local_path(candidate) else None
+        try:
+            return candidate.is_dir() if is_local_path(candidate) else None
+        except OSError:
+            return None

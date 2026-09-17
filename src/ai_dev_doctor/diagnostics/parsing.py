@@ -69,7 +69,12 @@ def parse_proxy(value: str) -> ProxyEndpoint | None:
 
 def parse_version_token(output: str) -> str | None:
     """Extract one conventional dotted version without returning surrounding output."""
-    match = re.search(r"(?<![A-Za-z0-9])v?(\d+\.\d+(?:\.\d+){0,2})(?![A-Za-z0-9])", output)
+    match = re.fullmatch(
+        r"(?:v|Python |pip |gh version |codex-cli )?(\d+\.\d+(?:\.\d+){0,2})"
+        r"(?: \([^\r\n]*\)| from [^\r\n]+)?"
+        r"(?:\r?\nhttps://github\.com/cli/cli/releases/tag/v[\d.]+)?\s*",
+        output,
+    )
     return match[1] if match else None
 
 

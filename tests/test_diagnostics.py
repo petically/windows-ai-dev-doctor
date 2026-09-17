@@ -67,7 +67,8 @@ def test_proxy_is_not_automatically_failure(context: Context) -> None:
     ],
 )
 def test_git_failures(context: Context, result: CommandResult) -> None:
-    assert git_check(replace(context, runner=FakeRunner(result))).status == Status.WARNING
+    expected = Status.INFO if result.outcome == "missing" else Status.WARNING
+    assert git_check(replace(context, runner=FakeRunner(result))).status == expected
 
 
 def test_path_platform_guard(context: Context) -> None:

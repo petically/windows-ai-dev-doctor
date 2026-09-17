@@ -12,7 +12,7 @@ def _windows(ctx: Context) -> bool:
 
 
 def _version(output: str) -> str | None:
-    match = re.search(r"(?<!\d)(\d+\.\d+(?:\.\d+){0,3})(?!\d)", output)
+    match = re.fullmatch(r"(\d+\.\d+(?:\.\d+){0,3})\s*", output)
     return match[1] if match else None
 
 
@@ -88,8 +88,8 @@ def powershell_check(ctx: Context) -> CheckResult:
         status = Status.WARNING if malformed else Status.PASS
         summary = f"{found} PowerShell runtime{'s' if found != 1 else ''} available"
     else:
-        status = Status.FAIL
-        summary = "No usable PowerShell runtime detected"
+        status = Status.INFO
+        summary = "PowerShell availability could not be verified through inspected PATH entries"
     return CheckResult(
         "powershell",
         "PowerShell",
@@ -104,7 +104,7 @@ def powershell_check(ctx: Context) -> CheckResult:
         evidence=tuple(evidence),
         recommendations=()
         if found and not malformed
-        else ("Repair Windows PowerShell or install a supported PowerShell release.",),
+        else ("If your workflow needs PowerShell, review the inspected PATH and installation.",),
         documentation_url="https://learn.microsoft.com/powershell/",
     )
 
@@ -122,7 +122,10 @@ def terminal_check(ctx: Context) -> CheckResult:
     if state.installed:
         status, summary = Status.PASS, "Windows Terminal detected"
     elif state.installed is False:
-        status, summary = Status.WARNING, "Windows Terminal not detected (optional)"
+        status, summary = (
+            Status.INFO,
+            "Windows Terminal not detected by inspected indicators (optional)",
+        )
     else:
         status, summary = Status.INFO, "Windows Terminal detection unavailable"
     return CheckResult(
@@ -269,7 +272,10 @@ def webview2_check(ctx: Context) -> CheckResult:
     elif versions:
         status, summary = Status.PASS, f"WebView2 Runtime {versions[-1]} detected"
     else:
-        status, summary = Status.WARNING, "WebView2 Runtime not detected"
+        status, summary = (
+            Status.INFO,
+            "Evergreen WebView2 not detected; application-bundled runtimes were not inspected",
+        )
     return CheckResult(
         "webview2-runtime",
         "WebView2 Runtime",

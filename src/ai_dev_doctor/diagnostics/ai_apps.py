@@ -74,9 +74,12 @@ def codex_cli_check(ctx: Context) -> CheckResult:
         status, summary = Status.PASS, f"Codex CLI {version} is executable"
         evidence.append(("version", version))
     elif result.outcome == "missing":
-        status, summary = Status.WARNING, "Codex CLI not found on inspected local PATH entries"
+        status, summary = Status.INFO, "Codex CLI not found on inspected local PATH entries"
     elif result.outcome == "blocked":
-        status, summary = Status.WARNING, "Codex CLI found only through an unsafe batch launcher"
+        status, summary = (
+            Status.INFO,
+            "Codex CLI uses a batch launcher that this probe does not execute",
+        )
     else:
         status, summary = Status.WARNING, "Codex CLI version probe could not complete reliably"
     return CheckResult(

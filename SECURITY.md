@@ -17,8 +17,12 @@ supported developer tools. It resolves absolute executable paths, rejects batch 
 does not use a shell or stdin, and omits API keys, auth tokens and proxy credentials from
 the child environment. GitHub authentication status additionally requires `--network` and
 never requests token output. Time and output bounds do not make hostile binaries safe.
-Only the direct command child is killed on timeout; probes that create descendants require
-a reviewed process-tree containment strategy before being added.
+Windows commands start inside a private kill-on-close Job Object before their initial thread
+runs. Descendants cannot request breakaway through this job; setup failures refuse execution.
+Only the three standard IO handles are inherited. Completion, timeout and cancellation close
+the job; unrelated processes are never selected by name or PID for termination. POSIX uses
+an owned process group; malicious children that escape that group remain outside its guarantee.
+Neither adapter restricts installed-tool file access or acts as an OS security sandbox.
 
 The Windows adapter uses read-only Win32 APIs and documented registry locations. It collects
 names or aggregate metadata needed for findings, not command lines, Git identities, file
@@ -41,3 +45,13 @@ elevation, driver/security change, or PATH/proxy/registry mutation.
 
 Do not run this development tool as Administrator. Do not add arbitrary command execution,
 recursive deletion or automatic registry/PATH/proxy edits to the diagnostic context.
+
+
+The v0.1.0 distribution strategy is an unsigned portable x64 bundle with a published SHA-256
+checksum. SmartScreen/reputation warnings are possible. A checksum verifies artifact integrity,
+not publisher identity; obtain artifacts from this repository's release page. No installer,
+certificate fabrication or security-control bypass is part of the release process.
+
+The source credential/path scan recognizes specific patterns and build-machine paths. The
+privacy canary suite exercises every renderer and logging, but cannot recognize every opaque
+secret. Source distribution contents are allowlisted so unrelated local Markdown is not shipped.

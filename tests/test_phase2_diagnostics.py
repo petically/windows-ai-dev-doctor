@@ -162,7 +162,7 @@ def test_windows_system_branches(context: Context) -> None:
     )
     assert directories_check(replace(ctx, windows=denied)).status == Status.WARNING
     missing_webview = replace(windows, webview_values=())
-    assert webview2_check(replace(ctx, windows=missing_webview)).status == Status.WARNING
+    assert webview2_check(replace(ctx, windows=missing_webview)).status == Status.INFO
 
 
 def test_developer_tool_results_and_repository_privacy(context: Context) -> None:
@@ -191,7 +191,7 @@ def test_developer_tool_results_and_repository_privacy(context: Context) -> None
         },
     )
     ctx = replace(phase2_context(context), runner=runner)
-    assert git_config_check(ctx).status == Status.PASS
+    assert git_config_check(ctx).status == Status.INFO
     repository = git_repository_check(ctx)
     assert repository.status == Status.WARNING
     assert "private.txt" not in str(repository)

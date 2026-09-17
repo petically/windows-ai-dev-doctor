@@ -3,8 +3,7 @@
 ## Authority and scope
 
 The complete product brief is [Windows AI Dev Doctor — Codex 完整开发提示词.md](Windows%20AI%20Dev%20Doctor%20—%20Codex%20完整开发提示词.md).
-Phase 1 established the architecture and safety foundation. Phase 2 implements the reasonable
-diagnostic depth of that brief without authorizing a production release. No tag or GitHub
+Phase 1 established the architecture and safety foundation. Phase 2 implemented diagnostic depth; Phase 3 audits and hardens that implementation. No tag or GitHub
 Release may be created without explicit authorization. Development version: `0.1.0.dev0`.
 
 ## Product contract
@@ -50,7 +49,7 @@ diagnostic logs/errors use stderr unless a local log file is explicitly requeste
 and never overwrite existing files. Network consent applies to report runs too.
 
 Statuses: PASS, INFO, WARNING, FAIL, SKIPPED, ERROR. Severity is independent:
-info, low, medium, high. A missing optional tool is WARNING, unsupported platform or
+info, low, medium, high. A missing optional tool is INFO, unsupported platform or
 disabled probe is SKIPPED, implementation failure is ERROR. No fabricated PASS.
 Schema version `1` is separate from application version. Stable check IDs and categories
 are public interfaces. Additive fields are allowed; incompatible changes require a new schema.
@@ -62,11 +61,12 @@ change. Multiple installations, proxy layers and occupied ports are not failures
 corroborating evidence. Direct connectivity does not validate configured proxies. Cache
 inspection is bounded metadata only; no application cache repair exists because trustworthy
 ownership, process guards and rollback are not proven. Installed tools/plugins are trusted,
-and direct-child timeouts are not a process-tree sandbox.
+and owned process-tree cleanup is not a security sandbox.
 
-## Release gate (later)
+## Release gate
 
-Audit all original acceptance criteria; expand threat-model/redaction review; review false
-positives and Win32 structure handling; verify the unsigned standalone distribution on clean
-supported Windows 10/11 machines; decide on signing/installer requirements; validate install
-instructions; obtain explicit release authorization.
+Complete the security/false-positive review, pass local tests and packaging, synchronize main,
+and verify remote CI at the exact release commit. Phase 3 and conditional v0.1.0 publication
+are explicitly authorized. Signing/installer decisions and real Windows validation evidence
+are documented in RELEASE_READINESS.md. Untested clean Windows 10/11 clients remain a known
+validation requirement and must never be represented as tested.

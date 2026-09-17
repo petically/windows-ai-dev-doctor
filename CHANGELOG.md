@@ -1,6 +1,23 @@
 # Changelog
 
-## Unreleased — 0.1.0.dev0 / Phase 2
+## Unreleased - Phase 3
+
+- Contain Windows probe descendants atomically in kill-on-close Job Objects, including
+  cancellation and successful-parent exit; no uncontained fallback or unrelated process kills.
+- Validate Win32 adapter/TCP buffers, preserve process-enumeration uncertainty and restrict
+  localhost evidence to loopback/wildcard listeners.
+- Reduce optional-tool, Git identity, Codex configuration, inactive-proxy and IPv6 false positives.
+- Harden redaction for escaped/multiline credentials, folded headers, generic URI credentials,
+  connection strings, private keys and personal paths across reports and logs.
+- Prevent optional Git index updates, fsmonitor hooks and submodule traversal during inspection.
+- Fix Linux strict type checks, enforce UTF-8 CLI output and add Windows 2022/2025 CI.
+- Add PE version metadata, explicit source-package contents, source privacy scan and relocated
+  Unicode/spaced-path portable smoke tests with no-overwrite checks.
+- Select unsigned portable x64 packaging; defer installer/signing and explicitly track client
+  Windows 10/11 clean-machine validation as unverified.
+
+
+## Phase 2
 
 - Expanded the deterministic registry from 6 to 36 diagnostics across system, developer
   tools, AI applications, environment and network categories.

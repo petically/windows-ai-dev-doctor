@@ -27,7 +27,11 @@ def path_check(ctx: Context) -> CheckResult:
         "path-structure",
         "PATH structure",
         "environment",
-        Status.WARNING if findings else Status.PASS,
+        Status.WARNING
+        if any(k != "uninspected" for k, _ in findings)
+        else Status.INFO
+        if findings
+        else Status.PASS,
         f"{len(findings)} PATH structural finding{'s' if len(findings) != 1 else ''}"
         if findings
         else "PATH directories exist without structural issues",
@@ -71,7 +75,7 @@ def developer_environment_check(ctx: Context) -> CheckResult:
         raw = ctx.host.environment.get(key)
         if not raw:
             continue
-        values = raw.split(";") if key == "NODE_PATH" else [raw]
+        values = raw.split(";") if key in ("NODE_PATH", "GOPATH") else [raw]
         statuses = []
         for value in values[:32]:
             cleaned = value.strip().strip('"')
@@ -96,7 +100,7 @@ def developer_environment_check(ctx: Context) -> CheckResult:
         f"{len(set(bad))} configured developer path variable{'s' if len(set(bad)) != 1 else ''} need review"
         if bad
         else (
-            "Configured developer path variables are structurally valid"
+            "Configured developer path variables inspected where accessible"
             if evidence
             else "No supported developer path variables are configured"
         ),

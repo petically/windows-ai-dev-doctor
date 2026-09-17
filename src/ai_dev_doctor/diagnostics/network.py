@@ -71,7 +71,7 @@ def _proxy_result(check_id: str, name: str, state: ProxyState) -> CheckResult:
     if state.outcome != "ok":
         return CheckResult(check_id, name, "network", Status.INFO, "Proxy state could not be read")
     endpoints = parse_windows_proxy(state.server) if state.server else ()
-    malformed = bool(state.server and endpoints is None)
+    malformed = bool(state.enabled and state.server and endpoints is None)
     evidence: list[tuple[str, str]] = [
         ("enabled", str(state.enabled).lower()),
         ("bypass-list", "configured" if state.bypass_configured else "not configured"),
@@ -93,7 +93,7 @@ def _proxy_result(check_id: str, name: str, state: ProxyState) -> CheckResult:
         else (
             "Proxy configuration detected"
             if state.enabled or state.auto_configured
-            else "Direct access configured"
+            else "No explicit manual proxy detected; automatic discovery was not evaluated"
         ),
         evidence=tuple(evidence),
         severity=Severity.LOW if malformed else Severity.INFO,
@@ -124,17 +124,21 @@ def adapter_check(ctx: Context) -> CheckResult:
     tunnels = sum(adapter.possible_tunnel for adapter in adapters)
     evidence = (
         ("active-adapters", str(len(adapters))),
-        ("default-route", "available" if route_present else "not identified"),
+        ("ipv4-reference-route", "available" if route_present else "not identified"),
         ("possible-tunnel-adapters", str(tunnels)),
     )
-    status = Status.PASS if adapters and route_present else Status.WARNING
+    status = Status.PASS if adapters and route_present else Status.INFO
     return CheckResult(
         "network-adapters",
         "Network adapters and route",
         "network",
         status,
         f"{len(adapters)} active adapter{'s' if len(adapters) != 1 else ''}; "
-        + ("default route identified" if route_present else "default route not identified"),
+        + (
+            "IPv4 route to the reference address identified"
+            if route_present
+            else "IPv4 reference route not identified"
+        ),
         evidence=evidence,
         severity=Severity.MEDIUM if status == Status.WARNING else Severity.INFO,
         details=(
@@ -178,7 +182,7 @@ def proxy_layers_check(ctx: Context) -> CheckResult:
             if endpoint:
                 endpoints.append(endpoint)
     for state in (ctx.windows.system_proxy(), ctx.windows.winhttp_proxy()):
-        if state.server:
+        if state.outcome == "ok" and state.enabled and state.server:
             parsed = parse_windows_proxy(state.server)
             if parsed:
                 endpoints.extend(parsed)
@@ -188,9 +192,10 @@ def proxy_layers_check(ctx: Context) -> CheckResult:
     for endpoint in endpoints:
         host = endpoint.host.casefold().strip("[]")
         try:
-            local = ipaddress.ip_address(host).is_loopback
+            address = ipaddress.ip_address(host)
+            local = address.version == 4 and address.is_loopback
         except ValueError:
-            local = host == "localhost"
+            local = False  # localhost may resolve only to IPv6; this table is IPv4-only.
         if local and listeners is not None and endpoint.port not in listening_ports:
             missing_local.append(endpoint.port)
     adapters = ctx.windows.adapters() or ()
@@ -221,7 +226,8 @@ def proxy_layers_check(ctx: Context) -> CheckResult:
         ),
         severity=Severity.MEDIUM if missing_local else Severity.INFO,
         details=(
-            "This check is conservative: different layers or an occupied port alone do not prove a fault.",
+            "Only explicit IPv4 loopback proxies are correlated; IPv6 and localhost name resolution are not inspected.",
+            "Different layers or an occupied port alone do not prove a fault.",
         ),
         recommendations=(
             "Start the intended proxy service or correct the localhost proxy endpoint.",

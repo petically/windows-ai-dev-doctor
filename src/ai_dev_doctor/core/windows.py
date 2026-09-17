@@ -6,6 +6,7 @@ import ctypes
 import os
 import shutil
 import socket
+import struct
 import sys
 from collections.abc import Mapping
 from ctypes import wintypes
@@ -209,9 +210,13 @@ def _process_entries() -> tuple[tuple[int, str], ...] | None:
     values: list[tuple[int, str]] = []
     try:
         ok = process_first(snapshot, ctypes.byref(entry))
+        if not ok and ctypes.get_last_error() != 18:
+            return None
         while ok:
             values.append((int(entry.th32ProcessID), entry.szExeFile))
             ok = process_next(snapshot, ctypes.byref(entry))
+        if ctypes.get_last_error() != 18:
+            return None
     finally:
         close_handle(snapshot)
     return tuple(values)
@@ -221,16 +226,18 @@ def _cache_metadata(roots: tuple[Path, ...], limit: int = 4096) -> tuple[int, in
     """Bounded metadata-only scan of known application roots for common cache directories."""
     cache_names = {"cache", "code cache", "gpucache"}
     stack: list[tuple[Path, int, bool]] = []
+    truncated = False
     for root in roots:
         try:
-            if is_local_path(root) and root.is_dir():
+            if not is_local_path(root):
+                truncated = True
+            elif root.is_dir():
                 stack.append((root, 0, False))
         except OSError:
-            pass
+            truncated = True
     cache_directories = 0
     total_bytes = 0
     inspected = 0
-    truncated = False
     while stack:
         directory, depth, inside_cache = stack.pop()
         if depth > 5:
@@ -245,6 +252,7 @@ def _cache_metadata(roots: tuple[Path, ...], limit: int = 4096) -> tuple[int, in
                         return cache_directories, total_bytes, truncated
                     try:
                         if entry.is_symlink():
+                            truncated = True
                             continue
                         entry_cache = inside_cache or entry.name.casefold() in cache_names
                         if entry.is_dir(follow_symlinks=False):
@@ -253,6 +261,8 @@ def _cache_metadata(roots: tuple[Path, ...], limit: int = 4096) -> tuple[int, in
                             path = Path(entry.path)
                             if is_local_path(path):
                                 stack.append((path, depth + 1, entry_cache))
+                            else:
+                                truncated = True
                         elif entry_cache and entry.is_file(follow_symlinks=False):
                             total_bytes += entry.stat(follow_symlinks=False).st_size
                     except OSError:
@@ -273,7 +283,7 @@ class LocalWindowsInspector:
         return sys.platform == "win32"
 
     def version(self) -> WindowsVersion | None:
-        if not self.available:
+        if sys.platform != "win32":
             return None
         import winreg
 
@@ -296,15 +306,18 @@ class LocalWindowsInspector:
         return WindowsVersion(product_text, str(display), build_text)
 
     def is_admin(self) -> bool | None:
-        if not self.available:
+        if sys.platform != "win32":
             return None
         try:
-            return bool(ctypes.windll.shell32.IsUserAnAdmin())
+            api = ctypes.WinDLL("shell32", use_last_error=True).IsUserAnAdmin
+            api.argtypes = ()
+            api.restype = wintypes.BOOL
+            return bool(api())
         except (AttributeError, OSError):
             return None
 
     def important_directories(self) -> tuple[DirectoryState, ...]:
-        if not self.available:
+        if sys.platform != "win32":
             return ()
         labels = {
             "profile": self.environment.get("USERPROFILE"),
@@ -330,7 +343,7 @@ class LocalWindowsInspector:
         return tuple(states)
 
     def disks(self) -> tuple[DiskState, ...]:
-        if not self.available:
+        if sys.platform != "win32":
             return ()
         candidates = {
             "system": self.environment.get("SYSTEMROOT"),
@@ -354,7 +367,7 @@ class LocalWindowsInspector:
         return tuple(states)
 
     def webview2_versions(self) -> tuple[str, ...] | None:
-        if not self.available:
+        if sys.platform != "win32":
             return None
         import winreg
 
@@ -376,7 +389,7 @@ class LocalWindowsInspector:
         return tuple(sorted(versions))
 
     def system_proxy(self) -> ProxyState:
-        if not self.available:
+        if sys.platform != "win32":
             return ProxyState("unsupported")
         import winreg
 
@@ -396,7 +409,7 @@ class LocalWindowsInspector:
         )
 
     def winhttp_proxy(self) -> ProxyState:
-        if not self.available:
+        if sys.platform != "win32":
             return ProxyState("unsupported")
 
         class WINHTTP_PROXY_INFO(ctypes.Structure):
@@ -429,7 +442,7 @@ class LocalWindowsInspector:
                 global_free(info.bypass)
 
     def adapters(self) -> tuple[AdapterState, ...] | None:
-        if not self.available:
+        if sys.platform != "win32":
             return None
 
         class IP_ADAPTER_ADDRESSES(ctypes.Structure):
@@ -447,7 +460,7 @@ class LocalWindowsInspector:
             ("FirstDnsServerAddress", ctypes.c_void_p),
             ("DnsSuffix", wintypes.LPWSTR),
             ("Description", wintypes.LPWSTR),
-            ("FriendlyName", wintypes.LPWSTR),
+            ("FriendlyName", ctypes.c_void_p),
             ("PhysicalAddress", ctypes.c_ubyte * 8),
             ("PhysicalAddressLength", wintypes.DWORD),
             ("Flags", wintypes.DWORD),
@@ -455,12 +468,21 @@ class LocalWindowsInspector:
             ("IfType", wintypes.DWORD),
             ("OperStatus", ctypes.c_int),
         ]
+        api = ctypes.WinDLL("iphlpapi", use_last_error=True).GetAdaptersAddresses
+        api.argtypes = (
+            wintypes.ULONG,
+            wintypes.ULONG,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.POINTER(wintypes.ULONG),
+        )
+        api.restype = wintypes.ULONG
         size = wintypes.ULONG(15_000)
         for _ in range(2):
+            if not 1 <= size.value <= 16 * 1024 * 1024:
+                return None
             buffer = ctypes.create_string_buffer(size.value)
-            result = ctypes.windll.iphlpapi.GetAdaptersAddresses(
-                0, 0x0F, None, buffer, ctypes.byref(size)
-            )
+            result = api(0, 0x0F, None, buffer, ctypes.byref(size))
             if result == 0:
                 break
             if result != 111:
@@ -470,10 +492,34 @@ class LocalWindowsInspector:
         type_names = {6: "ethernet", 24: "loopback", 71: "wireless", 131: "tunnel"}
         states: list[AdapterState] = []
         current = ctypes.cast(buffer, pointer)
-        count = 0
-        while current and count < 256:
+        seen: set[int] = set()
+        start = ctypes.addressof(buffer)
+        end = start + len(buffer)
+        while current:
+            address = ctypes.cast(current, ctypes.c_void_p).value
+            if (
+                address is None
+                or address in seen
+                or len(seen) >= 256
+                or not start <= address <= end - ctypes.sizeof(IP_ADAPTER_ADDRESSES)
+            ):
+                return None
+            seen.add(address)
             item = current.contents
-            friendly = (item.FriendlyName or "").casefold()
+            if item.Length < ctypes.sizeof(IP_ADAPTER_ADDRESSES) or address + item.Length > end:
+                return None
+            friendly = ""
+            if item.FriendlyName:
+                offset = item.FriendlyName - start
+                if not 0 <= offset < len(buffer) or offset % 2:
+                    return None
+                raw = buffer.raw[offset:]
+                terminator = next(
+                    (i for i in range(0, len(raw) - 1, 2) if raw[i : i + 2] == b"\0\0"), None
+                )
+                if terminator is None:
+                    return None
+                friendly = raw[:terminator].decode("utf-16-le", errors="replace").casefold()
             possible_tunnel = item.IfType in (53, 131) or any(
                 term in friendly for term in ("vpn", "tun", "tap", "wireguard", "wintun")
             )
@@ -486,11 +532,10 @@ class LocalWindowsInspector:
                     )
                 )
             current = item.Next
-            count += 1
         return tuple(states)
 
     def default_route_interface(self) -> int | None:
-        if not self.available:
+        if sys.platform != "win32":
             return None
 
         class SOCKADDR_IN(ctypes.Structure):
@@ -504,44 +549,42 @@ class LocalWindowsInspector:
         target = SOCKADDR_IN(socket.AF_INET, 0, (1, 1, 1, 1), (0,) * 8)
         index = wintypes.DWORD()
         try:
-            result = ctypes.windll.iphlpapi.GetBestInterfaceEx(
-                ctypes.byref(target), ctypes.byref(index)
-            )
+            api = ctypes.WinDLL("iphlpapi", use_last_error=True).GetBestInterfaceEx
+            api.argtypes = (ctypes.c_void_p, ctypes.POINTER(wintypes.DWORD))
+            api.restype = wintypes.DWORD
+            result = api(ctypes.byref(target), ctypes.byref(index))
         except (AttributeError, OSError):
             return None
         return int(index.value) if result == 0 else None
 
     def listeners(self, ports: tuple[int, ...]) -> tuple[ListenerState, ...] | None:
-        if not self.available:
+        if sys.platform != "win32":
             return None
-
-        class ROW(ctypes.Structure):
-            _fields_ = [
-                ("state", wintypes.DWORD),
-                ("local_address", wintypes.DWORD),
-                ("local_port", wintypes.DWORD),
-                ("remote_address", wintypes.DWORD),
-                ("remote_port", wintypes.DWORD),
-                ("pid", wintypes.DWORD),
-            ]
 
         size = wintypes.DWORD(0)
-        api = ctypes.windll.iphlpapi.GetExtendedTcpTable
+        api = ctypes.WinDLL("iphlpapi", use_last_error=True).GetExtendedTcpTable
+        api.argtypes = (
+            ctypes.c_void_p,
+            ctypes.POINTER(wintypes.DWORD),
+            wintypes.BOOL,
+            wintypes.ULONG,
+            ctypes.c_int,
+            wintypes.ULONG,
+        )
+        api.restype = wintypes.DWORD
         result = api(None, ctypes.byref(size), False, socket.AF_INET, 3, 0)
-        if result not in (0, 122) or size.value > 16 * 1024 * 1024:
-            return None
-        buffer = ctypes.create_string_buffer(size.value)
-        if api(buffer, ctypes.byref(size), False, socket.AF_INET, 3, 0) != 0:
-            return None
-        count = ctypes.cast(buffer, ctypes.POINTER(wintypes.DWORD)).contents.value
-        base = ctypes.addressof(buffer) + ctypes.sizeof(wintypes.DWORD)
-        found: list[ListenerState] = []
-        for index in range(min(count, 65_536)):
-            row = ROW.from_address(base + index * ctypes.sizeof(ROW))
-            port = socket.ntohs(int(row.local_port) & 0xFFFF)
-            if port in ports:
-                found.append(ListenerState(port, int(row.pid)))
-        return tuple(found)
+        for _ in range(3):
+            if result not in (0, 122) or not 4 <= size.value <= 16 * 1024 * 1024:
+                return None
+            buffer = ctypes.create_string_buffer(size.value)
+            result = api(buffer, ctypes.byref(size), False, socket.AF_INET, 3, 0)
+            if result == 0:
+                if size.value > len(buffer):
+                    return None
+                return _parse_tcp_table(buffer.raw[: size.value], ports)
+            if result != 122:
+                return None
+        return None
 
     def process_names(self) -> tuple[str, ...] | None:
         entries = _process_entries()
@@ -557,6 +600,7 @@ class LocalWindowsInspector:
             "powershell",
             "pwsh",
             "wt",
+            "windowsterminal",
             "wireguard",
             "openvpn",
             "clash",
@@ -571,7 +615,7 @@ class LocalWindowsInspector:
         return tuple(sorted(names, key=str.casefold))
 
     def gpus(self) -> tuple[GPUState, ...] | None:
-        if not self.available:
+        if sys.platform != "win32":
             return None
         import winreg
 
@@ -586,11 +630,18 @@ class LocalWindowsInspector:
         return tuple(sorted(values, key=lambda item: item.name.casefold()))
 
     def app_state(self, app: str) -> AppState:
-        if not self.available or app not in ("chatgpt", "codex", "terminal"):
+        try:
+            return self._app_state(app)
+        except OSError:
             return AppState(None, None)
-        processes = tuple(name.casefold() for name in (self.process_names() or ()))
+
+    def _app_state(self, app: str) -> AppState:
+        if sys.platform != "win32" or app not in ("chatgpt", "codex", "terminal"):
+            return AppState(None, None)
+        names = self.process_names()
+        processes = tuple(name.casefold() for name in names or ())
         if app == "chatgpt":
-            running = any("chatgpt" in name for name in processes)
+            running = any("chatgpt" in name for name in processes) if names is not None else None
             roots = (self.environment.get("LOCALAPPDATA"), self.environment.get("APPDATA"))
             candidates = tuple(
                 Path(root) / "OpenAI" / "ChatGPT" for root in roots if root is not None
@@ -624,16 +675,26 @@ class LocalWindowsInspector:
                 truncated,
             )
         if app == "codex":
-            running = any(Path(name).stem.casefold() == "codex" for name in processes)
+            running = (
+                any(Path(name).stem.casefold() == "codex" for name in processes)
+                if names is not None
+                else None
+            )
             profile = self.environment.get("USERPROFILE")
             root = Path(profile) / ".codex" if profile else None
             exists = bool(root and is_local_path(root) and root.is_dir())
             config = root / "config.toml" if root else None
             readable = (
-                bool(config and config.is_file() and os.access(config, os.R_OK)) if exists else None
+                os.access(config, os.R_OK)
+                if exists and config and is_local_path(config) and config.is_file()
+                else None
             )
             return AppState(exists, running, int(exists), readable)
-        running = any(Path(name).stem.casefold() in ("wt", "windowsterminal") for name in processes)
+        running = (
+            any(Path(name).stem.casefold() in ("wt", "windowsterminal") for name in processes)
+            if names is not None
+            else None
+        )
         local_app_data = self.environment.get("LOCALAPPDATA")
         executable = (
             Path(local_app_data) / "Microsoft" / "WindowsApps" / "wt.exe"
@@ -642,3 +703,20 @@ class LocalWindowsInspector:
         )
         installed = bool(executable and is_local_path(executable) and executable.is_file())
         return AppState(installed, running)
+
+
+def _parse_tcp_table(data: bytes, ports: tuple[int, ...]) -> tuple[ListenerState, ...] | None:
+    """MIB_TCPTABLE_OWNER_PID has a DWORD count and 24-byte IPv4 rows."""
+    if len(data) < 4:
+        return None
+    count = struct.unpack_from("<I", data)[0]
+    if count > 65536 or count > (len(data) - 4) // 24:
+        return None
+    found: list[ListenerState] = []
+    for index in range(count):
+        state, address, raw_port, _, _, pid = struct.unpack_from("<6I", data, 4 + index * 24)
+        port = socket.ntohs(raw_port & 0xFFFF)
+        # A listener bound only to a LAN address is not a localhost listener.
+        if state == 2 and (address == 0 or address & 0xFF == 127) and port in ports:
+            found.append(ListenerState(port, pid))
+    return tuple(found)

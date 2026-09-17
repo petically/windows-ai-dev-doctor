@@ -2,7 +2,7 @@
 
 Explain Windows developer-tool problems with evidence, conservative findings, and explicit safe actions.
 
-**Phase 2 diagnostic implementation · 0.1.0.dev0 · no production release yet**
+**Phase 3 release-readiness review · 0.1.0.dev0 · no production release yet**
 
 This project helps answer “why does my AI/developer tool not work on Windows?” It never
 claims that proxy presence, multiple installations, or an occupied port alone proves a fault.
@@ -58,8 +58,9 @@ python -m venv .venv
 
 The Windows CI build produces a **development ZIP artifact** containing the executable and
 its bundled runtime. Extract the entire folder and run `ai-dev-doctor.exe`; Python is not
-required. Keep the `_internal` folder beside the executable. No installer or signed release
-is available yet. [CI artifacts](https://github.com/petically/windows-ai-dev-doctor/actions)
+required. Keep the `_internal` folder beside the executable. The portable bundle is unsigned; Windows SmartScreen/reputation warnings may appear.
+There is no installer. Verify the download source and published checksum; do not disable
+Windows security controls. [CI artifacts](https://github.com/petically/windows-ai-dev-doctor/actions)
 may require a GitHub login to download.
 
 An onedir package is deliberate: fast startup and no onefile runtime extraction writes.
@@ -120,12 +121,15 @@ and options are rejected rather than silently ignored.
 - Outbound probes require explicit consent; normal DNS/IP metadata is visible on the network.
 - Secrets are removed at output boundaries. Collection is minimized; no auth/config dumps.
 - Git configuration checks report only selected key presence; repository checks report counts,
-  never identities, branches, remotes or file names.
+  never identities, branches, remotes or file names. Git status disables optional index
+  updates, fsmonitor hooks and submodule traversal.
 - ChatGPT/Codex cache inspection is bounded metadata only: directory/file counts and aggregate
   sizes. It never reads cache or configuration contents and offers no cache deletion.
 - Remote/reparse PATH locations are not traversed, preventing accidental share access.
 - Commands use a reviewed allowlist, explicit executable paths, bounded output/deadlines,
-  no shell or stdin, and a minimal environment. Installed executables must still be trusted.
+  no shell or stdin, and a minimal environment. Windows child trees are assigned atomically
+  to an owned Job Object and cleaned on completion, timeout or cancellation. Installed
+  executables must still be trusted.
 - Report/log files require explicit paths and never overwrite existing files.
 - The only fix backs up **this tool's own existing valid configuration**. It previews the
   source, backup and audit file, defaults to NO, requires interactive `yes`, rechecks input,
@@ -154,7 +158,12 @@ Known pre-release limitations:
   not prove that a configured proxy works.
 - Installed executables and built-in plugins are trusted; command deadlines are not a sandbox.
 - Discovery of Store/package-managed applications can be incomplete across future layouts.
-- The bundle is unsigned and has not completed clean-machine Windows 10/11 validation.
+- The bundle is unsigned. Local Windows 11 validation does not establish clean Windows 10/11,
+  Store-layout, ARM64 or enterprise-policy compatibility; see [validation evidence](RELEASE_READINESS.md).
+- Listener correlation and reference-route evidence are IPv4-only. IPv6/localhost-name
+  proxies and automatic proxy discovery remain unverified.
+- Git identity checks inspect global key presence only; local identities and values are not
+  validated. Authentication probes test stored GitHub accounts, excluding environment tokens.
 
 ```powershell
 python -m pip install -e ".[dev,build]"
@@ -162,13 +171,14 @@ python -m pytest
 python -m ruff check .
 python -m ruff format --check .
 python -m mypy src tests
+python scripts/scan_source.py
 python -m build
 python -m PyInstaller --clean --noconfirm ai-dev-doctor.spec
 python scripts/smoke_package.py dist/ai-dev-doctor/ai-dev-doctor.exe
 ```
 
 Use the virtual environment's Python. Tests use fake system/network state and controlled
-child processes. Windows and Linux CI test Python 3.12/3.13; Windows also builds and
+child processes. Windows Server 2022/2025 and Linux CI test Python 3.12/3.13; Windows also builds and
 smoke-tests the standalone bundle. Local filesystem probes rely on OS responsiveness;
 this is not a sandbox for malicious plugins, executables or concurrent local attackers.
 
@@ -178,3 +188,9 @@ Start with [CONTRIBUTING.md](CONTRIBUTING.md), [AGENTS.md](AGENTS.md), the
 [specification](SPEC.md), and the [architecture](ARCHITECTURE.md).
 Community expectations are in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 MIT licensed; see [LICENSE](LICENSE).
+
+Implemented diagnostics and configuration backup are listed above. Application discovery,
+GPU registry evidence and proxy/tunnel classification are **best-effort**. Cache repair,
+proprietary application-state diagnosis, signing and an installer are **planned**, not
+implemented. Missing optional software is informational; inaccessible state cannot prove a
+fault. Command stdout/stderr is not a report attachment. Redirected CLI output is UTF-8.
