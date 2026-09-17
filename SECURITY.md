@@ -1,7 +1,7 @@
 # Security and privacy
 
-This is a pre-release diagnostic tool, not a production-certified system repair utility.
-Only the current main branch receives fixes during pre-release development.
+This is an early diagnostic tool, not a production-certified system repair utility.
+Version 0.1.0 and the current main branch are the initial supported release line.
 
 ## Reporting
 
@@ -43,7 +43,7 @@ with a new plan. Concurrent malicious filesystem replacement by another process 
 the same user is outside this tool's isolation boundary. There is no cache deletion, automatic
 elevation, driver/security change, or PATH/proxy/registry mutation.
 
-Do not run this development tool as Administrator. Do not add arbitrary command execution,
+Ordinary use does not require running this tool as Administrator. Do not add arbitrary command execution,
 recursive deletion or automatic registry/PATH/proxy edits to the diagnostic context.
 
 

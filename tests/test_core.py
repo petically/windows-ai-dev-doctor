@@ -143,7 +143,7 @@ def test_report_contract_and_html_escaping(context: Context) -> None:
     results = registry().run(context)
     doc = json.loads(render_json(results, Redactor()))
     assert doc["schema_version"] == 1
-    assert doc["version"] == "0.1.0.dev0"
+    assert doc["version"] == "0.1.0"
     assert doc["timestamp"].endswith("+00:00")
     assert sum(doc["summary"].values()) == len(results)
     hostile = replace(results[0], summary='<script>alert("bad")</script>')

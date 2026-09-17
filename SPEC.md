@@ -4,7 +4,7 @@
 
 The complete product brief is [Windows AI Dev Doctor — Codex 完整开发提示词.md](Windows%20AI%20Dev%20Doctor%20—%20Codex%20完整开发提示词.md).
 Phase 1 established the architecture and safety foundation. Phase 2 implemented diagnostic depth; Phase 3 audits and hardens that implementation. No tag or GitHub
-Release may be created without explicit authorization. Development version: `0.1.0.dev0`.
+Release may be created without explicit authorization. Release version: `0.1.0`.
 
 ## Product contract
 
@@ -38,7 +38,7 @@ to infrastructure. Reports are local exports, never uploads. Redaction cannot be
 - Offline terminal/JSON/HTML rendering, schema version, timestamps, version and counts.
 - Safe planning/confirmation/execution framework; config backup is the only automatic fix.
 - Unit/security/CLI/integration tests, lint/format/type checks and Windows/Linux CI.
-- Windows onedir executable packaging and smoke-test automation without a release.
+- Windows onedir executable packaging and relocated smoke-test automation.
 
 ## Stable interface decisions
 

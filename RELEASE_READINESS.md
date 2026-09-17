@@ -47,8 +47,11 @@ Server CI images are also not equivalent to Windows client validation.
   Reparse-attribute refusal remains exercised independently of that skip.
 - Ruff, formatting, strict mypy (Windows and Linux platform modes), source credential/path scan,
   sdist/wheel, Windows executable and relocated smoke passed before the review commit.
-- Remote CI and the final release commit must be verified before tagging; final results are
-  recorded during release preparation, never inferred from local results.
+- Review commit `5006133` passed all six Windows 2022/2025 and Ubuntu Python 3.12/3.13 jobs,
+  plus Windows build and relocated smoke: [CI evidence](https://github.com/petically/windows-ai-dev-doctor/actions/runs/35177095322).
+- Release preparation updates version/PE metadata to 0.1.0 and repeats all local gates.
+  The final CI run and immutable release-commit hash are recorded in GitHub Release notes;
+  no tag or release is published until that exact commit passes CI.
 
 ## Known validation requirements and limits
 

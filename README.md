@@ -2,7 +2,7 @@
 
 Explain Windows developer-tool problems with evidence, conservative findings, and explicit safe actions.
 
-**Phase 3 release-readiness review · 0.1.0.dev0 · no production release yet**
+**v0.1.0 · portable Windows x64 CLI**
 
 This project helps answer “why does my AI/developer tool not work on Windows?” It never
 claims that proxy presence, multiple installations, or an occupied port alone proves a fault.
@@ -27,7 +27,7 @@ proprietary state is not parsed, and uncertain or unsupported observations are I
 Example output (illustrative, not a measurement of your machine):
 
 ```text
-Windows AI Dev Doctor 0.1.0.dev0
+Windows AI Dev Doctor 0.1.0
 
 System
   [PASS] Windows system: Windows 11 platform detected
@@ -56,8 +56,10 @@ python -m venv .venv
 .\.venv\Scripts\ai-dev-doctor.exe help
 ```
 
-The Windows CI build produces a **development ZIP artifact** containing the executable and
-its bundled runtime. Extract the entire folder and run `ai-dev-doctor.exe`; Python is not
+Download the **portable Windows x64 ZIP** and `SHA256SUMS.txt` from the
+[v0.1.0 release](https://github.com/petically/windows-ai-dev-doctor/releases/tag/v0.1.0).
+Compare its hash with `Get-FileHash .\ai-dev-doctor-0.1.0-windows-x64.zip -Algorithm SHA256`.
+The archive contains the executable and its bundled runtime. Extract the entire folder and run `ai-dev-doctor.exe`; Python is not
 required. Keep the `_internal` folder beside the executable. The portable bundle is unsigned; Windows SmartScreen/reputation warnings may appear.
 There is no installer. Verify the download source and published checksum; do not disable
 Windows security controls. [CI artifacts](https://github.com/petically/windows-ai-dev-doctor/actions)
@@ -152,7 +154,7 @@ The Windows adapter uses structured Win32 APIs and documented registry locations
 available. On non-Windows hosts, platform-specific checks return SKIPPED, which keeps the
 test and report pipeline portable without pretending Windows state was measured.
 
-Known pre-release limitations:
+Known limitations:
 
 - GitHub authentication and fixed-target connectivity require `--network`; direct probes do
   not prove that a configured proxy works.

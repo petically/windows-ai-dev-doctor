@@ -22,7 +22,7 @@ Windows development artifact build. No production release or v0.1.0 tag.
    intentionally manual because reliable ownership, running-process and rollback guarantees
    are not yet proven.
 
-## Phase 3 - release readiness
+## Phase 3 - release readiness completed
 
 - Independent review of all adapters, diagnostics, reporting and the backup framework.
 - Atomic Windows Job containment, robust TCP table bounds, conservative discovery and
@@ -31,8 +31,8 @@ Windows development artifact build. No production release or v0.1.0 tag.
   portable-bundle smoke tests. Validation results are tracked in RELEASE_READINESS.md.
 - Release choice: unsigned portable x64 ZIP, versioned PE metadata and SHA-256 checksum.
   Installer and signing are deferred; commercial signing is not required for v0.1.0.
-- Publish v0.1.0 only after local gates pass and the exact release commit has green CI.
-  Conditional publication has been explicitly authorized.
+- Review commit 5006133 passed all six platform/Python CI jobs and Windows portable packaging.
+  Release preparation sets 0.1.0; final publication requires green CI on that exact commit.
 
 ## Next validation and development
 

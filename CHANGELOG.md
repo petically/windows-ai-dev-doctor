@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased - Phase 3
+## 0.1.0 - 2026-09-17
+
+Initial portable Windows x64 release with 36 offline-first diagnostics.
+
+### Phase 3 release hardening
 
 - Contain Windows probe descendants atomically in kill-on-close Job Objects, including
   cancellation and successful-parent exit; no uncontained fallback or unrelated process kills.
@@ -16,8 +20,7 @@
 - Select unsigned portable x64 packaging; defer installer/signing and explicitly track client
   Windows 10/11 clean-machine validation as unverified.
 
-
-## Phase 2
+### Phase 2 coverage
 
 - Expanded the deterministic registry from 6 to 36 diagnostics across system, developer
   tools, AI applications, environment and network categories.
@@ -31,7 +34,7 @@
   evidence and explicitly consented DNS, TCP and HTTPS network stages.
 - Expanded fake-adapter, parser, privacy, command-safety and packaged smoke coverage.
 - Updated documentation and packaging smoke expectations for the complete Phase 2 registry.
-- No production tag or GitHub Release; the development bundle remains unsigned.
+- The initial portable release remains unsigned; Windows reputation warnings may occur.
 
 ### Phase 1 foundation
 
@@ -43,4 +46,4 @@
 - Added dry-run and confirmed, audited backup of the tool's own configuration.
 - Added unit, integration, security and CLI tests, static checks and Windows/Linux CI.
 - Added Windows standalone development-bundle packaging and smoke tests.
-- No production tag or GitHub Release.
+- Phase 1 was an unreleased foundation milestone.
