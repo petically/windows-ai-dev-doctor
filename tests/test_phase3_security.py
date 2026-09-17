@@ -55,8 +55,11 @@ def test_owned_descendants_die_and_unrelated_process_survives(parent_wait: bool)
                     kernel.CloseHandle(handle)
         else:
             status = Path(f"/proc/{pid}/stat")
-            if status.exists():
-                assert status.read_text().split()[2] == "Z"
+            try:
+                state = status.read_text().split()[2]
+            except FileNotFoundError:
+                state = "gone"  # The OS may reap it between observation and read.
+            assert state in ("Z", "gone")
         assert unrelated.poll() is None
     finally:
         unrelated.terminate()
