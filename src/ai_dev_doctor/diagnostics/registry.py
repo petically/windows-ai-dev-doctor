@@ -1,6 +1,8 @@
 """Explicit registration of the trusted built-in diagnostic modules."""
 
-from ai_dev_doctor.core.engine import Check, Registry
+from collections.abc import Callable
+
+from ai_dev_doctor.core.engine import Check, Context, Registry
 from ai_dev_doctor.diagnostics.ai_apps import (
     chatgpt_check,
     codex_cli_check,
@@ -47,6 +49,7 @@ from ai_dev_doctor.diagnostics.system import (
     terminal_check,
     webview2_check,
 )
+from ai_dev_doctor.models import CheckResult
 
 
 def _check(
@@ -54,21 +57,15 @@ def _check(
     name: str,
     category: str,
     explanation: str,
-    run: object,
+    run: Callable[[Context], CheckResult],
     network: bool = False,
 ) -> Check:
-    from collections.abc import Callable
-    from typing import cast
-
-    from ai_dev_doctor.core.engine import Context
-    from ai_dev_doctor.models import CheckResult
-
     return Check(
         check_id,
         name,
         category,
         explanation,
-        cast(Callable[[Context], CheckResult], run),
+        run,
         network,
     )
 

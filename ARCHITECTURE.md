@@ -15,8 +15,9 @@ execution. Plugins are trusted Python code, not a security sandbox.
 ## Modules and plugin contract
 
 `models.py`: validated immutable CheckResult, status/severity and metadata.
-`core/`: config, redaction, command runner, host/network adapters, registry/engine and logging.
-`diagnostics/`: explicit built-in Check definitions and pure parsing helpers.
+`core/`: config, redaction, command runner, host/network/Windows adapters, registry/engine and logging.
+`diagnostics/`: explicit system, developer-tool, AI-application, environment and network
+modules, plus pure parsing helpers and one explicit registry.
 `fixes/`: immutable plans and restricted backup operation, separate from diagnostics.
 `reporting/`: a shared sanitized document, terminal/JSON/HTML views and exclusive export.
 `cli.py`: argument validation and composition only.
@@ -35,20 +36,23 @@ comes from the Check definition. Report schema is versioned independently of app
 
 ## Read-only execution and time bounds
 
-CommandRunner accepts an enum of reviewed commands, never caller-provided argv. Phase 1
-allows only `git --version`. It resolves absolute executables from absolute PATH entries,
-excludes the current directory, rejects Windows .bat/.cmd launchers, disables stdin/shell,
-uses a minimal environment without credential/proxy variables, and caps captured output.
-Timeout kills the direct child, drains bounded output and returns a typed outcome. This is
-not a general process-tree sandbox; only reviewed short-lived version probes belong here.
-No auth commands run implicitly: `gh auth status` can access the network and will need
-separate consent and output minimization in Phase 2.
+CommandRunner accepts enums for reviewed tools and operations, never caller-provided argv.
+It supports fixed version/config/status probes for Git/GitHub CLI, Python/pip/launcher,
+Node/npm/npx, PowerShell, Windows Terminal, Codex and selected version managers. It resolves
+all local PATH matches from absolute entries, excludes the current directory and remote or
+reparse locations, and rejects Windows batch launchers. npm/npx use `node.exe` with adjacent
+reviewed CLI scripts instead of invoking `.cmd` files. Execution disables stdin/shell, uses
+a minimal environment without credential/proxy values, and caps output. GitHub auth status
+requires network consent and never requests token output. Timeouts kill the direct child,
+drain bounded output and return a typed outcome; this is not a process-tree sandbox.
 
-Network probes run in disposable multiprocessing workers. A parent deadline covers DNS,
-TCP, TLS and HTTP together; the worker is terminated/joined on timeout. Fixed public targets,
-verified TLS, HEAD only, no redirects, proxy credentials, cookies or arbitrary URLs. HTTPS
-results identify DNS/TCP/TLS/HTTP stages. Probes are direct connectivity, not a validation of
-the user's proxy path. Proxy environment inspection is offline and never connects.
+Network probes run in disposable multiprocessing workers. Separate DNS and TCP probes, plus
+a staged HTTPS probe, use fixed public targets. A parent deadline covers each target; workers
+are terminated/joined on timeout. TLS is verified; HTTP uses HEAD only, no redirects, proxy
+credentials, cookies or arbitrary URLs. HTTPS results identify DNS/TCP/TLS/HTTP stages.
+Probes are direct connectivity, not validation of the user's proxy path. Environment, system
+and WinHTTP proxy inspection is offline. Adapter/default-route and localhost-listener evidence
+is read through typed Win32 APIs and does not turn mere presence into a failure.
 
 ## Privacy and output boundary
 
@@ -102,7 +106,17 @@ they have actual callers; avoid speculative generic abstractions.
   from installation/version or serialize authentication output.
 - [PyInstaller usage](https://pyinstaller.org/en/stable/usage.html): build Windows on Windows.
 
-## Implementation review (Phase 1)
+## Implementation review
+
+Phase 2 retains the Phase 1 safety refinements and adds a typed read-only Windows boundary.
+The explicit registry now contains 36 checks. Application configuration and cache checks read
+only presence, timestamps, counts and aggregate sizes under known roots, with hard traversal
+limits; proprietary contents are not parsed. Git configuration/repository checks expose key
+presence and counts only. OS structures use Win32 APIs or documented registry locations rather
+than localized command output. Unsupported, denied or ambiguous observations remain
+INFO/SKIPPED instead of fabricated PASS.
+
+### Phase 1 refinements
 
 The first working implementation prompted four refinements: evidence key/value pairs are
 sanitized together (not just as strings); parser errors do not echo raw CLI arguments;

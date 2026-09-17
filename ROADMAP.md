@@ -1,27 +1,34 @@
 # Roadmap
 
-## Phase 1 — foundation (current)
+## Phase 1 — foundation (complete)
 
 Architecture and safety contracts; Python package/CLI; registry and immutable results;
 bounded command/network boundaries; strict configuration; mandatory redaction; local
 reports/logging; representative diagnostics; confirmed config backup; tests and CI;
 Windows development artifact build. No production release or v0.1.0 tag.
 
-## Phase 2 — diagnostic depth
+## Phase 2 — diagnostic depth (implementation complete)
 
-1. Add Windows API adapter (read-only registry, privilege, platform paths); PowerShell,
-   Terminal, disk/temp inspection without write probes; robust WebView2 discovery.
-2. Add gh version/auth (explicit network consent), Python/pip/launcher, Node/npm/npx and
-   version managers; executable shadowing; Git config/repository state without identities.
-3. Add system/WinHTTP proxy, adapters/routes, multiple DNS targets, localhost/listeners and
-   ownership; distinguish direct and proxy-aware connectivity, avoid false conflict claims.
-4. Add best-effort ChatGPT/Codex discovery and configuration metadata, process/GPU adapters,
-   cache evidence with uncertainty; never parse proprietary formats speculatively.
-5. Expand localized/permission-denied fixtures and Windows 10/11 packaged validation.
-6. Consider app-specific fixes only after discovery, process guards and recovery are tested.
+1. Added the read-only Windows adapter for registry, privilege, platform paths, disk,
+   WebView2, network interfaces/routes/listeners, processes, GPU and application metadata.
+2. Added reviewed PowerShell, Terminal, Git/GitHub CLI, Python/pip/launcher, Node/npm/npx,
+   Codex and version-manager diagnostics plus executable shadowing and repository summaries.
+3. Added environment, system and WinHTTP proxy inspection; conservative proxy/listener
+   correlation; and consented DNS, TCP and HTTPS stages.
+4. Added best-effort ChatGPT/Codex discovery and bounded configuration/cache metadata without
+   parsing proprietary contents or claiming uncertain state.
+5. Expanded parser, missing/denied/malformed, privacy, command-safety and packaged smoke tests.
+6. Retained the configuration backup as the only automatic fix. Application cache repair is
+   intentionally manual because reliable ownership, running-process and rollback guarantees
+   are not yet proven.
 
-## Release readiness
+## Release readiness (requires review/authorization)
 
-Audit all original acceptance criteria; expand threat-model/redaction corpus; review false
-positives; verify standalone distribution on clean Windows machines; document limitations;
-validate install instructions. Only then request/act on release authorization for v0.1.0.
+- Audit the original full-product acceptance criteria and the diagnostic false-positive model.
+- Complete a dedicated security review of Win32 structures, process attribution, redaction
+  corpus and command process-tree containment.
+- Validate the standalone unsigned bundle on clean supported Windows 10 and Windows 11 systems,
+  including Store-installed application layouts and restricted enterprise environments.
+- Decide whether to add signed packaging/installer support and app-specific repair primitives.
+- Confirm documentation and install instructions, then obtain explicit authorization before
+  creating v0.1.0, a tag or a GitHub Release.

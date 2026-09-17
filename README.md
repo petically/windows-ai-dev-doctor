@@ -2,27 +2,27 @@
 
 Explain Windows developer-tool problems with evidence, conservative findings, and explicit safe actions.
 
-**Phase 1 foundation · 0.1.0.dev0 · no production release yet**
+**Phase 2 diagnostic implementation · 0.1.0.dev0 · no production release yet**
 
-This project helps answer “why does my AI/developer tool not work on Windows?”
-The foundation is implemented; broader AI application and Windows diagnostics are next.
-It never claims that proxy presence, multiple installations, or an occupied port alone proves a fault.
+This project helps answer “why does my AI/developer tool not work on Windows?” It never
+claims that proxy presence, multiple installations, or an occupied port alone proves a fault.
 
 ## Available now
 
-| Check ID | Scope |
-| --- | --- |
-| windows-system | Windows version and architecture metadata |
-| git-version | Installed Git can execute a recognized version probe |
-| path-structure | Windows PATH duplicates, missing/relative/empty/quoted entries |
-| proxy-environment | Proxy URL structure; credential-free endpoint evidence |
-| network-dns | Explicitly enabled, bounded resolution of two public targets |
-| network-https | Explicitly enabled direct DNS/TCP/TLS/HTTP connectivity stages |
+The explicit registry contains 36 checks:
 
-CLI, per-check failure isolation, strict TOML config, mandatory redaction, local JSON/HTML
-reports, and a confirmed configuration-backup framework are implemented. There are no runtime
-Python package dependencies. ChatGPT/Codex, WebView2, GPU, detailed tool and system checks
-are **not implemented yet**; see [ROADMAP.md](ROADMAP.md).
+| Category | Coverage |
+| --- | --- |
+| System (9) | Windows edition/build, PowerShell, Terminal, privilege, disk, important directories, WebView2, GPU, relevant processes |
+| Developer tools (12) | Git version/config/repository, GitHub CLI/auth, Python/launcher/pip, Node/npm/npx, version managers |
+| AI applications (3) | ChatGPT Desktop discovery, Codex CLI version, Codex configuration/cache metadata |
+| Environment (3) | PATH structure, selected developer paths, executable shadowing |
+| Network (9) | Environment/system/WinHTTP proxy, adapters/routes, listeners, proxy-layer correlation, DNS/TCP/HTTPS |
+
+CLI, per-check failure isolation, strict TOML config, mandatory redaction, opt-in local
+JSON/HTML reports and logs, and a confirmed configuration-backup framework are implemented.
+There are no runtime Python package dependencies. Application discovery is best-effort:
+proprietary state is not parsed, and uncertain or unsupported observations are INFO/SKIPPED.
 
 Example output (illustrative, not a measurement of your machine):
 
@@ -30,14 +30,17 @@ Example output (illustrative, not a measurement of your machine):
 Windows AI Dev Doctor 0.1.0.dev0
 
 System
-  [INFO] Windows system: Windows platform detected
+  [PASS] Windows system: Windows 11 platform detected
 Developer Tools
   [PASS] Git version: Git 2.49.0.windows.1 is executable
+AI Applications
+  [INFO] ChatGPT Desktop: ChatGPT indicators were found
 Environment
   [WARNING] PATH structure: 2 PATH findings
 Network
   [INFO] Proxy environment: Proxy environment detected
   [SKIPPED] DNS connectivity: Network probe requires --network consent
+  [SKIPPED] TCP connectivity: Network probe requires --network consent
   [SKIPPED] HTTPS connectivity: Network probe requires --network consent
 ```
 
@@ -71,9 +74,10 @@ ai-dev-doctor diagnose
 ai-dev-doctor doctor
 ai-dev-doctor diagnose --verbose
 ai-dev-doctor diagnose --json
+ai-dev-doctor diagnose --category ai-applications
 ai-dev-doctor diagnose --category network
 ai-dev-doctor diagnose --network
-ai-dev-doctor explain git-version
+ai-dev-doctor explain git-repository
 ai-dev-doctor report --output doctor-report.json
 ai-dev-doctor report --output doctor-report.html
 ai-dev-doctor diagnose --log-file local-events.jsonl
@@ -100,7 +104,7 @@ Example:
 ```toml
 network_timeout = 4.0
 command_timeout = 4.0
-enabled_categories = ["system", "developer-tools", "environment", "network"]
+enabled_categories = ["system", "developer-tools", "ai-applications", "environment", "network"]
 disabled_checks = []
 verbose = false
 ```
@@ -115,6 +119,10 @@ and options are rejected rather than silently ignored.
 - No telemetry, analytics or uploads. Reports and logs stay local.
 - Outbound probes require explicit consent; normal DNS/IP metadata is visible on the network.
 - Secrets are removed at output boundaries. Collection is minimized; no auth/config dumps.
+- Git configuration checks report only selected key presence; repository checks report counts,
+  never identities, branches, remotes or file names.
+- ChatGPT/Codex cache inspection is bounded metadata only: directory/file counts and aggregate
+  sizes. It never reads cache or configuration contents and offers no cache deletion.
 - Remote/reparse PATH locations are not traversed, preventing accidental share access.
 - Commands use a reviewed allowlist, explicit executable paths, bounded output/deadlines,
   no shell or stdin, and a minimal environment. Installed executables must still be trusted.
@@ -135,6 +143,18 @@ and structured results. HTML is self-contained, escaped, responsive and usable o
 No scripts, external assets or automatic browser launch. Existing destinations are refused.
 
 ## Development and validation
+
+The Windows adapter uses structured Win32 APIs and documented registry locations where
+available. On non-Windows hosts, platform-specific checks return SKIPPED, which keeps the
+test and report pipeline portable without pretending Windows state was measured.
+
+Known pre-release limitations:
+
+- GitHub authentication and fixed-target connectivity require `--network`; direct probes do
+  not prove that a configured proxy works.
+- Installed executables and built-in plugins are trusted; command deadlines are not a sandbox.
+- Discovery of Store/package-managed applications can be incomplete across future layouts.
+- The bundle is unsigned and has not completed clean-machine Windows 10/11 validation.
 
 ```powershell
 python -m pip install -e ".[dev,build]"

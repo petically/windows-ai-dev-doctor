@@ -256,10 +256,10 @@ def test_ai_application_discovery_is_informational(context: Context) -> None:
     assert chatgpt_check(ctx).status == Status.INFO
     assert codex_cli_check(ctx).status == Status.PASS
     assert codex_environment_check(ctx).status == Status.INFO
+    assert "contents" in codex_environment_check(ctx).details[0]
 
 
-def test_cache_metadata_scan_is_bounded(tmp_path: Path, context: Context) -> None:
-    ctx = phase2_context(context)
+def test_cache_metadata_scan_is_bounded(tmp_path: Path) -> None:
     cache = tmp_path / "GPUCache"
     cache.mkdir()
     (cache / "entry.bin").write_bytes(b"x" * 32)
@@ -267,4 +267,3 @@ def test_cache_metadata_scan_is_bounded(tmp_path: Path, context: Context) -> Non
     assert (directories, size, truncated) == (1, 32, False)
     _, _, truncated = _cache_metadata((tmp_path,), limit=0)
     assert truncated
-    assert "contents" in codex_environment_check(ctx).details[0]
